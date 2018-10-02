@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Adv Dupe Inspector - Subnet ROOT Labs</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.2.0/css/solid.css" integrity="sha384-wnAC7ln+XN0UKdcPvJvtqIH3jOjs9pnKnq9qX68ImXvOGz2JuFoEiCjT8jyZQX2z" crossorigin="anonymous">
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.2.0/css/fontawesome.css" integrity="sha384-HbmWTHay9psM8qyzEKPc8odH4DsOuzdejtnr+OFtDmOcIVnhgReQ4GZBH7uwcjf6" crossorigin="anonymous">
+<style>
+
+html { width:100%; height:100%; }
+body {
+	width: 100%;
+	min-height: 100%;
+	margin: 0;
+	padding: 0;
+	background-color:#F0F0F0;
+	
+	display: grid;
+	grid-gap: 3px;
+	grid-template-columns: 1fr 2fr;
+	grid-template-rows: 150px auto;
+	grid-template-areas:
+		"header header"
+		"treeview inspector";
+}
+body > * { background-color:white; padding:0px 8px; }
+#header { grid-area:header; }
+#treeview { grid-area:treeview; overflow-y:scroll; }
+#inspector { grid-area:inspector; overflow-y:scroll; }
+
+h1 { font-size:1.5em; margin-top:0px; }
+h2 { font-size:1.2em; margin-top:0px; }
+
+#fileupload { position:relative; overflow:hidden; width:100%; max-width:500px; border:3px solid #7CB9E8; background-color:#9EDBFA; color:#0A64C0; font-weight:bold; padding:4px 4px; }
+#fileupload #filestatus { display:inline-block; position:absolute; right:0; padding:0 6px; }
+#fileupload #filestatus.hidden { display:none; }
+#fileupload #filestatus.loading { background-color:inherit; color:inherit; }
+#fileupload #filestatus.accepted { background-color:#00FF7F; color:#00AF2F; }
+#fileupload #filestatus.rejected { background-color:#FF9899; color:#AF4849; }
+#fileupload #filestatus.warning { background-color:#E8F48C; color:#98A43C; }
+#fileupload #filestatus .status-icon { display:none; }
+#fileupload #filestatus.loading .status-icon.loading-icon { display:inline-block; }
+#fileupload #filestatus.accepted .status-icon.accepted-icon { display:inline-block; }
+#fileupload #filestatus.rejected .status-icon.rejected-icon { display:inline-block; }
+#fileupload #filestatus.warning .status-icon.warning-icon { display:inline-block; }
+#fileupload input { opacity:0; position:absolute; top:0; right:0; width:100%; height:100%; }
+
+details { padding-left:1em; }
+details > summary { margin-left:-1em; list-style:none; }
+details > summary::-webkit-details-marker { display:none; }		/* Chrome doesn't support list-style on summary elements yet */
+details > summary::before { content:'+'; margin-right:0.5em; }
+details[open] > summary::before { content:'-'; }
+
+</style>
+<script>
+
+var fileStatusMsg = {accepted: "Ready to inspect", rejected: "Parsing error", warning: "Optimizations possible" };
+
+// enum ExpressionType
+var ExpressionType = Object.freeze({
+	"unset": 0,
+	"dictionary": 1,
+	"dictionaryEscaped": 2,
+	"table": 3,
+	"player": 4,
+	"angle": 5,
+	"vector": 6,
+	"boolean": 7,
+	"string": 8,
+	"number": 9,
+	validators: [
+		/^.*$/,				// unset
+		/^.+$/,				// dictionary
+		/^.+$/,				// dictionaryEscaped
+		/^.+$/,				// table
+		/^\d+$/,			// player
+		/^-?\d+(.\d+)?,-?\d+(.\d+)?,-?\d+(.\d+)?$/,		// angle
+		/^-?\d+(.\d+)?,-?\d+(.\d+)?,-?\d+(.\d+)?$/,		// vector
+		/^[0-1]$/,			// boolean
+		/^"[^"]*"$/,		// string
+		/^-?\d+(.\d+)?$/	// number
+	],
+	charToEnum: function(chr) { switch(chr.toUpperCase()){
+		case 'Y': return this.dictionary;
+		case 'Z': return this.dictionaryEscaped;
+		case 'T': return this.table;
+		case 'P': return this.player;
+		case 'A': return this.angle;
+		case 'V': return this.vector;
+		case 'B': return this.boolean;
+		case 'S': return this.string;
+		case 'N': return this.number;
+		default: return this.unset;
+	} },
+	enumToChar: function(val) { switch(val){
+		case this.dictionary: return 'Y';
+		case this.dictionaryEscaped: return 'Z';
+		case this.table: return 'T';
+		case this.player: return 'P';
+		case this.angle: return 'A';
+		case this.vector: return 'V';
+		case this.boolean: return 'B';
+		case this.string: return 'S';
+		case this.number: return 'N';
+		default: return '';
+	} }
+});
+
+// class EdictExpression
+class EdictExpression
+{
+	constructor(typeLeft, valueLeft, typeRight, valueRight)
+	{
+		this.typeLeft = typeLeft;
+		this.valueLeft = valueLeft;
+		this.typeRight = typeRight;
+		this.valueRight = valueRight;
+	}
+	
+	// Checks left and right values for type sanity. Returns true if values match their type's range
+	isValid()
+	{
+		return (ExpressionType.validators[this.typeLeft].test(valueLeft) && ExpressionType.validators[this.typeRight].test(valueRight));
+	}
+}
+
+// class Edict
+class Edict
+{
+	constructor()
+	{
+		this.expressions = [];
+	}
+	
+	addExpression(edictExpr)
+	{
+		if (edictExpr instanceof EdictExpression) this.expressions.push(edictExpr);
+	}
+	
+	addExpressionFromArray(arr)
+	{
+		this.addExpression(new EdictExpression(arr[0], arr[1], arr[2], arr[3]));
+	}
+}
+
+// class EdictCollection
+class EdictCollection
+{
+	constructor()
+	{
+		this.entities = {};
+		this.headEntityID = undefined;
+		this.constraints = {};
+		this.headConstraintID = undefined;
+	}
+	
+	getEdict(edictID)
+	{
+		if (this.entities[edictID] !== undefined) return this.entities[edictID];
+		else if (this.constraints[edictID] !== undefined) return this.constraints[edictID];
+		else return false;
+	}
+	
+	// Takes an array of strings representing the dictionary, checks each edict's expressions for type sanity and dictionary/edict references, and returns an array of warnings
+	validateEdicts(dictionary)
+	{
+		Object.keys(this.entities)
+		 .concat(Object.keys(this.constraints))
+		 .forEach((edictID) => {
+			var thisEdict = this.getEdict(edictID);
+			// TODO
+		});
+	}
+	
+	// Takes an array of strings formatted as "identity{type:value=type:value;...}", maps those instances to this collection's entities, and returns an array of warnings
+	addEntitiesFromStringArray(arr)
+	{
+		var result = this.stringArrayToEdicts(arr);
+		this.entities = result.edicts;
+		this.headEntityID = result.head;
+		return result.warnings;
+	}
+	
+	// Takes an array of strings formatted as "identity{type:value=type:value;...}", maps those instances to this collection's constraints, and returns an array of warnings
+	addConstraintsFromStringArray(arr)
+	{
+		var result = this.stringArrayToEdicts(arr);
+		this.constraints = result.edicts;
+		this.headConstraintID = result.head;
+		return result.warnings;
+	}
+	
+	// Takes an array of strings formatted as "identity{type:value=type:value;...}", and returns an object{head, edicts{}, warnings[]}. Object.head is the entity ID of the head entity, if found.
+	//  Object.edicts is a collection of Edict objects represented by the given array of strings
+	stringArrayToEdicts(arr)
+	{
+		var result = {head:undefined, edicts:{}, warnings:[]};
+		
+		arr.forEach((edictstr, idx) => {
+			var splits = edictstr.split(/^(.+)(?:\{)(.+)(?:\})$/g);
+			if (splits.length < 2){ result.warnings.push("Edict string at index "+idx+" malformed"); return; }
+			var edictID = splits[1];
+			var edictBody = (splits[2]?splits[2]:"");
+			if (edictBody.length < 1) result.warnings.push("Edict "+edictID+" body missing or empty");
+			if (splits[0].length > 0) result.warnings.push("Data found before edict "+edictID+" identifier");
+			if (splits[3].length > 0) result.warnings.push("Data found after edict "+edictID+" body");
+			
+			var thisEdict = new Edict();
+			
+			// Break the body into individual expressions
+			// Returns 1 unmatched/remainder string, plus 5 entries per expression (type1, value1, type2, value2, and unmatched/remainder)
+			var bodyParts = edictBody.split(/(?:(.):(.+?))(?:=(.):(.+?))?(?:;)/g);
+			var defaultExprParts = [EdictExpression.unset, "", EdictExpression.unset, ""];
+			if (edictBody == ";"){ result.warnings.push("Edict "+edictID+" has no expressions. Is the edict necessary?"); thisEdict.addExpressionFromArray(defaultExprParts); }
+			else if (bodyParts.length == 1){ result.warnings.push("Edict "+edictID+" body missing at least 1 separator"); thisEdict.addExpressionFromArray(defaultExprParts); }
+			else
+			{
+				if (bodyParts[0].length > 0) result.warnings.push("Data found before edict "+edictID+" first expression");
+				for (var exprNum = 1, i = 1; i < bodyParts.length; exprNum++, i+=5)
+				{
+					// Add each expression to the edict
+					var exprParts = [
+						ExpressionType.charToEnum(bodyParts[i]),		// type 1
+						bodyParts[i+1],									// value 1
+						ExpressionType.charToEnum(bodyParts[i+2]),		// type 2
+						(bodyParts[i+3]===undefined?"":bodyParts[i+3])	// value 2
+					];
+					if (bodyParts[i+4].length > 0) 							result.warnings.push("Data found after edict "+edictID+" expression "+exprNum);
+					if (exprParts[0] == ExpressionType.unset) 				result.warnings.push("Edict "+edictID+" expression "+exprNum+" left type unsupported");
+					if (exprParts[0] == ExpressionType.dictionaryEscaped) 	result.warnings.push("Edict "+edictID+" expression "+exprNum+" left type deprecated");
+					if (exprParts[2] == ExpressionType.unset) 				result.warnings.push("Edict "+edictID+" expression "+exprNum+" right type unsupported");
+					if (exprParts[2] == ExpressionType.dictionaryEscaped) 	result.warnings.push("Edict "+edictID+" expression "+exprNum+" right type deprecated");
+					thisEdict.addExpressionFromArray(exprParts);
+				}
+			}
+			
+			// Add the edict to the result
+			if (result.edicts[edictID] !== undefined) result.warnings.push("Edict "+edictID+" was defined multiple times");
+			result.edicts[edictID] = thisEdict;
+			if (edictID.startsWith("H"))
+			{
+				if (result.head !== undefined) result.warnings.push("Edict "+edictID+" looks like the head, but the head was already found");
+				result.head = edictID;
+			}
+		});
+		
+		if (result.head === undefined) result.warnings.push("Head entity not found");
+		
+		return result;
+	}
+}
+
+function loadFile(fileList)
+{
+	// User selected no file
+	if (fileList.length == 0) return;
+	
+	var file = fileList[0];
+	if (file.type != "text/plain"){ updateFileStatus("rejected", file.name+" is not a plaintext file (*.txt)"); return; }
+	
+	var reader = new FileReader();
+	
+	reader.onload = (res) => { parseData(res.target.result); };
+	reader.onerror = (res) => { updateFileStatus("rejected", "The file reader returned error code "+res.target.error.code+". Please check the file and try again."); };
+	
+	updateFileStatus("loading", "");
+	reader.readAsText(file);
+}
+
+function parseData(data)
+{
+	// Standardize newlines and remove empty lines in case the user manually edited the file
+	data = data.replace(/\r+\n/g, "\n").replace(/\n\s*\n/g, "\n");
+	
+	var parseWarnings = [];
+	var dataSections = {};
+	var expectedDataSections = ["Info", "More Information", "Save", "Dict"];
+	
+	// Split the data by sections and populate the dataSections object
+	var splits = data.split(/\n?^\[(.*)\]$\n?/gm);
+	if (splits[0].length > 0) parseWarnings.push("Data found before first section");
+	for (var i = 1; i < splits.length; i+=2)
+	{
+		// Each section becomes a property of the dataSections object, whose value is an array of strings delimited by newlines
+		if (dataSections[splits[i]] !== undefined) parseWarnings.push("Section '"+encodeURIComponent(splits[i])+"' was defined multiple times");
+		else if (expectedDataSections.indexOf(splits[i]) < 0) parseWarnings.push("Unrecognized section '"+encodeURIComponent(splits[i])+"'");
+		dataSections[splits[i]] = splits[i+1].split("\n");
+	}
+	
+	// Check for expected data sections
+	for (var i = 0; i < expectedDataSections.length; i++)
+	{
+		if (dataSections[expectedDataSections[i]] === undefined)
+		{
+			updateFileStatus("rejected", "Section '"+encodeURIComponent(expectedDataSections[i])+"' missing");
+			return;
+		}
+	}
+	
+	// Convert data section values from arrays of strings into key-value pairs
+	expectedDataSections.forEach((section) => {
+		var kvs = stringArrayToKV(dataSections[section]);
+		dataSections[section] = kvs.result;
+		kvs.warnings.forEach((v) => parseWarnings.push("Section '"+section+"' "+v));
+	});
+	
+	console.log("parsed data sections: ", dataSections);
+	
+	if (dataSections['Save']['Entities'] === undefined){ updateFileStatus("rejected", "Section 'Save' missing entities"); return; }
+	if (dataSections['Save']['Constraints'] === undefined){ updateFileStatus("rejected", "Section 'Save' missing constraints"); return; }
+	
+	// Break edicts into string arrays for parsing
+	var edictResult = edictStringToStringArray(dataSections['Save']['Entities']);
+	dataSections['Save']['Entities'] = edictResult.result;
+	edictResult.warnings.forEach((v) => parseWarnings.push("Entities "+v));
+	edictResult = edictStringToStringArray(dataSections['Save']['Constraints']);
+	dataSections['Save']['Constraints'] = edictResult.result;
+	edictResult.warnings.forEach((v) => parseWarnings.push("Constraints "+v));
+	
+	// Parse edicts
+	var edictCollection = new EdictCollection();
+	var entityWarnings = edictCollection.addEntitiesFromStringArray(dataSections['Save']['Entities']);
+	var constraintWarnings = edictCollection.addConstraintsFromStringArray(dataSections['Save']['Constraints']);
+	parseWarnings = parseWarnings.concat(entityWarnings, constraintWarnings);
+	
+	console.log("edict collection: ", edictCollection);
+	
+	// TODO: Edict value validation
+	
+	// TODO: Display parsed results in the UI
+	
+	if (parseWarnings.length > 0) updateFileStatus("warning", parseWarnings.join("<br>"));
+	else updateFileStatus("accepted", "");
+}
+
+// Takes an array of strings formatted as "key:value", and returns an object{result, warnings[]}. Object.result has properties named after keys holding values without surrounding quotes
+function stringArrayToKV(arr)
+{
+	var result = {result:{}, warnings:[]};
+	arr.forEach((str) => {
+		var splitIdx = str.indexOf(":");
+		if (splitIdx < 0 || splitIdx == str.length-1){ result.warnings.push("Key '"+encodeURIComponent(str)+"' has no value"); splitIdx = (splitIdx<0?str.length:splitIdx); }
+		else if (splitIdx == 0) result.warnings.push("Value '"+encodeURIComponent(str)+"' has no key");
+		
+		var key = str.slice(0, splitIdx);
+		var val = str.slice(splitIdx+1);
+		if (result.result[key] !== undefined) result.warnings.push("Key '"+encodeURIComponent(key)+"' was defined multiple times");
+		result.result[key] = val.replace(/(^\")|(\"$)/g, "");
+	});
+	return result;
+}
+
+// Takes a string formatted as "A{type:value;...;}B{type:value;...;}", and returns an object{result[], warnings[]}. Object.result is an array of strings formatted as ["A{type:value;...;}", "B{type:value;...;}"]
+function edictStringToStringArray(str)
+{
+	var result = {result:[], warnings:[]};
+	result.result = str.match(/.+?{.*?}/g);
+	if (result.result == null){ result.result = [str]; result.warnings.push("Edict string contained no edicts"); }
+	
+	// Include a parse warning if we didn't match the entire string
+	var totalLength = 0;
+	result.result.forEach((v) => totalLength+=v.length);
+	if (totalLength < str.length) result.warnings.push("Edict string contained some junk data, which we removed");
+	
+	return result;
+}
+
+function updateFileStatus(status, details)
+{
+	$("#filestatus").removeClass().addClass(status);
+	$("#filestatus .label").text(fileStatusMsg[status]!==undefined?fileStatusMsg[status]:"");
+	// TODO: Show details in UI
+	console.log("file status updated to "+status+":", details);
+}
+
+function handleFileSelect(event)
+{
+	loadFile(event.originalEvent.target.files);
+}
+$(document).ready(() => { $("#fileupload input[type='file']").on("change", handleFileSelect); });
+
+function handleFileDrop(event)
+{
+	event.stopPropagation();
+	event.preventDefault();
+	loadFile(event.originalEvent.dataTransfer.files);
+}
+$(document).ready(() => { $('body').on('drop', handleFileDrop); });
+
+function handleFileDragOver(event)
+{
+	event.stopPropagation();
+	event.preventDefault();
+	event.originalEvent.dataTransfer.dropEffect = "copy";
+}
+$(document).ready(() => { $('body').on('dragover', handleFileDragOver); });
+
+</script>
+</head>
+<body>
+
+<div id="header">
+	<h1>Adv Dupe Inspector</h1>
+	<p>See what's in your dupes. Select a dupe from your Gmod data folder (%STEAMDIR%/steamapps/common/GarrysMod/garrysmod/data/adv_duplicator) <b>OR</b> drag a file into this window to get started.</p>
+	<div id="fileupload">
+		<i class="fas fa-file-upload"></i> Choose a dupe file
+		<div id="filestatus" class="hidden"><i class="fas fa-cog fa-spin status-icon loading-icon"></i><i class="fas fa-check-circle status-icon accepted-icon"></i><i class="fas fa-times-circle status-icon rejected-icon"></i><i class="fas fa-exclamation-circle status-icon warning-icon"></i>&nbsp;<span class="label"></span></div>
+		<input type="file">
+	</div>
+</div>
+
+<div id="treeview">
+	<h2>Treeview</h2>
+</div>
+
+<div id="inspector">
+	<h2>Inspector area</h2>
+</div>
+
+</body>
+</html>
