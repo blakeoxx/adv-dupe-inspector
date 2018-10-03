@@ -133,6 +133,11 @@ class Edict
 		this.expressions = [];
 	}
 	
+	getExpressions()
+	{
+		return expressions;
+	}
+	
 	addExpression(edictExpr)
 	{
 		if (edictExpr instanceof EdictExpression) this.expressions.push(edictExpr);
@@ -165,12 +170,24 @@ class EdictCollection
 	// Takes an array of strings representing the dictionary, checks each edict's expressions for type sanity and dictionary/edict references, and returns an array of warnings
 	validateEdicts(dictionary)
 	{
+		var warnings = [];
+		
 		Object.keys(this.entities)
 		 .concat(Object.keys(this.constraints))
 		 .forEach((edictID) => {
 			var thisEdict = this.getEdict(edictID);
+			
+			// Go through the edict's expressions
+			thisEdict.getExpressions().forEach((expr, idx) => {
+				if (!expr.isValid()) warnings.push("Edict "+edictID+" expression "+idx+" value doesn't match type");
+				// TODO
+				//else if () warnings.push("Edict "+edictID+" expression "+idx+" references a non-existent entity");
+				//else if () warnings.push("Edict "+edictID+" expression "+idx+" references a non-existent dictionary entry");
+			});
 			// TODO
 		});
+		
+		return warnings;
 	}
 	
 	// Takes an array of strings formatted as "identity{type:value=type:value;...}", maps those instances to this collection's entities, and returns an array of warnings
