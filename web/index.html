@@ -118,6 +118,26 @@ class EdictExpression
 		this.valueRight = valueRight;
 	}
 	
+	getLeftType()
+	{
+		return this.typeLeft;
+	}
+	
+	getLeftValue()
+	{
+		return this.valueLeft;
+	}
+	
+	getRightType()
+	{
+		return this.typeRight;
+	}
+	
+	getRightValue()
+	{
+		return this.valueRight;
+	}
+	
 	// Checks left and right values for type sanity. Returns true if values match their type's range
 	isValid()
 	{
@@ -164,7 +184,7 @@ class EdictCollection
 	{
 		if (this.entities[edictID] !== undefined) return this.entities[edictID];
 		else if (this.constraints[edictID] !== undefined) return this.constraints[edictID];
-		else return false;
+		else return undefined;
 	}
 	
 	// Takes an array of strings representing the dictionary, checks each edict's expressions for type sanity and dictionary/edict references, and returns an array of warnings
@@ -180,11 +200,17 @@ class EdictCollection
 			// Go through the edict's expressions
 			thisEdict.getExpressions().forEach((expr, idx) => {
 				if (!expr.isValid()) warnings.push("Edict "+edictID+" expression "+idx+" value doesn't match type");
-				// TODO
-				//else if () warnings.push("Edict "+edictID+" expression "+idx+" references a non-existent entity");
-				//else if () warnings.push("Edict "+edictID+" expression "+idx+" references a non-existent dictionary entry");
+				else
+				{
+					if (expr.getLeftType() == ExpressionType.table && this.getEdict(expr.getLeftValue()) === undefined) warnings.push("Edict "+edictID+" expression "+idx+" left value references a non-existent entity");
+					else if (expr.getLeftType() == ExpressionType.dictionary && dictionary[expr.getLeftValue()] === undefined) warnings.push("Edict "+edictID+" expression "+idx+" left value references a non-existent dictionary entry");
+					else if (expr.getLeftType() == ExpressionType.dictionaryEscaped && dictionary[expr.getLeftValue()] === undefined) warnings.push("Edict "+edictID+" expression "+idx+" left value references a non-existent dictionary entry");
+					
+					if (expr.getRightType() == ExpressionType.table && this.getEdict(expr.getRightValue()) === undefined) warnings.push("Edict "+edictID+" expression "+idx+" right value references a non-existent entity");
+					else if (expr.getRightType() == ExpressionType.dictionary && dictionary[expr.getRightValue()] === undefined) warnings.push("Edict "+edictID+" expression "+idx+" right value references a non-existent dictionary entry");
+					else if (expr.getRightType() == ExpressionType.dictionaryEscaped && dictionary[expr.getRightValue()] === undefined) warnings.push("Edict "+edictID+" expression "+idx+" right value references a non-existent dictionary entry");
+				}
 			});
-			// TODO
 		});
 		
 		return warnings;
@@ -343,7 +369,8 @@ function parseData(data)
 	
 	console.log("edict collection: ", edictCollection);
 	
-	// TODO: Edict value validation
+	// Edict value validation
+	edictCollection.validateEdicts(dataSections['Dict']);
 	
 	// TODO: Display parsed results in the UI
 	
