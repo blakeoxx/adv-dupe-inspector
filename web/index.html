@@ -141,7 +141,7 @@ class EdictExpression
 	// Checks left and right values for type sanity. Returns true if values match their type's range
 	isValid()
 	{
-		return (ExpressionType.validators[this.typeLeft].test(valueLeft) && ExpressionType.validators[this.typeRight].test(valueRight));
+		return (ExpressionType.validators[this.typeLeft].test(this.valueLeft) && ExpressionType.validators[this.typeRight].test(this.valueRight));
 	}
 }
 
@@ -155,7 +155,7 @@ class Edict
 	
 	getExpressions()
 	{
-		return expressions;
+		return this.expressions;
 	}
 	
 	addExpression(edictExpr)
@@ -254,7 +254,7 @@ class EdictCollection
 			// Break the body into individual expressions
 			// Returns 1 unmatched/remainder string, plus 5 entries per expression (type1, value1, type2, value2, and unmatched/remainder)
 			var bodyParts = edictBody.split(/(?:(.):(.+?))(?:=(.):(.+?))?(?:;)/g);
-			var defaultExprParts = [EdictExpression.unset, "", EdictExpression.unset, ""];
+			var defaultExprParts = [ExpressionType.unset, "", ExpressionType.unset, ""];
 			if (edictBody == ";"){ result.warnings.push("Edict "+edictID+" has no expressions. Is the edict necessary?"); thisEdict.addExpressionFromArray(defaultExprParts); }
 			else if (bodyParts.length == 1){ result.warnings.push("Edict "+edictID+" body missing at least 1 separator"); thisEdict.addExpressionFromArray(defaultExprParts); }
 			else
@@ -264,10 +264,10 @@ class EdictCollection
 				{
 					// Add each expression to the edict
 					var exprParts = [
-						ExpressionType.charToEnum(bodyParts[i]),		// type 1
-						bodyParts[i+1],									// value 1
-						ExpressionType.charToEnum(bodyParts[i+2]),		// type 2
-						(bodyParts[i+3]===undefined?"":bodyParts[i+3])	// value 2
+						(bodyParts[i]===undefined?ExpressionType.unset:ExpressionType.charToEnum(bodyParts[i])),		// type 1
+						(bodyParts[i+1]===undefined?"":bodyParts[i+1]),													// value 1
+						(bodyParts[i+2]===undefined?ExpressionType.unset:ExpressionType.charToEnum(bodyParts[i+2])),	// type 2
+						(bodyParts[i+3]===undefined?"":bodyParts[i+3])													// value 2
 					];
 					if (bodyParts[i+4].length > 0) 							result.warnings.push("Data found after edict "+edictID+" expression "+exprNum);
 					if (exprParts[0] == ExpressionType.unset) 				result.warnings.push("Edict "+edictID+" expression "+exprNum+" left type unsupported");
