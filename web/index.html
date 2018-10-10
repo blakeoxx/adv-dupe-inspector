@@ -50,7 +50,9 @@ details { padding-left:1em; }
 details > summary { margin-left:-1em; list-style:none; }
 details > summary::-webkit-details-marker { display:none; }		/* Chrome doesn't support list-style on summary elements yet */
 details > summary::before { content:'+'; margin-right:0.5em; }
-details[open] > summary::before { content:'-'; }
+details[open] > summary::before { font-family:'Courier New', monospace; content:'-'; }
+details > div { }
+details > div::before { font-family:'Courier New', monospace; content:'-'; margin-right:0.5em; }
 
 </style>
 <script>
@@ -148,14 +150,25 @@ class EdictExpression
 // class Edict
 class Edict
 {
-	constructor()
+	constructor(edictID)
 	{
+		this.edictID = edictID;
 		this.expressions = [];
+	}
+	
+	getID()
+	{
+		return this.edictID;
 	}
 	
 	getExpressions()
 	{
 		return this.expressions;
+	}
+	
+	setID(newID)
+	{
+		this.edictID = newID;
 	}
 	
 	addExpression(edictExpr)
@@ -180,6 +193,30 @@ class EdictCollection
 		this.headConstraintID = undefined;
 	}
 	
+	getHeadEntity()
+	{
+		if (this.headEntityID !== undefined && this.entities[this.headEntityID] !== undefined) return this.entities[this.headEntityID];
+		else return undefined;
+	}
+	
+	getHeadConstraint()
+	{
+		if (this.headConstraintID !== undefined && this.constraints[this.headConstraintID] !== undefined) return this.constraints[this.headConstraintID];
+		else return undefined;
+	}
+	
+	getEntities()
+	{
+		// Object.values sorts the properties by key in alphanumeric order
+		return Object.values(this.entities);
+	}
+	
+	getConstraints()
+	{
+		// Object.values sorts the properties by key in alphanumeric order
+		return Object.values(this.constraints);
+	}
+	
 	getEdict(edictID)
 	{
 		if (this.entities[edictID] !== undefined) return this.entities[edictID];
@@ -192,10 +229,8 @@ class EdictCollection
 	{
 		var warnings = [];
 		
-		Object.keys(this.entities)
-		 .concat(Object.keys(this.constraints))
-		 .forEach((edictID) => {
-			var thisEdict = this.getEdict(edictID);
+		this.getEntities().concat(this.getConstraints()).forEach((thisEdict) => {
+			var edictID = thisEdict.getID();
 			
 			// Go through the edict's expressions
 			thisEdict.getExpressions().forEach((expr, idx) => {
@@ -209,6 +244,8 @@ class EdictCollection
 					if (expr.getRightType() == ExpressionType.table && this.getEdict(expr.getRightValue()) === undefined) warnings.push("Edict "+edictID+" expression "+idx+" right value references a non-existent entity");
 					else if (expr.getRightType() == ExpressionType.dictionary && dictionary[expr.getRightValue()] === undefined) warnings.push("Edict "+edictID+" expression "+idx+" right value references a non-existent dictionary entry");
 					else if (expr.getRightType() == ExpressionType.dictionaryEscaped && dictionary[expr.getRightValue()] === undefined) warnings.push("Edict "+edictID+" expression "+idx+" right value references a non-existent dictionary entry");
+					
+					// TODO: Count dictionary and edict references
 				}
 			});
 		});
@@ -249,7 +286,7 @@ class EdictCollection
 			if (splits[0].length > 0) result.warnings.push("Data found before edict "+edictID+" identifier");
 			if (splits[3].length > 0) result.warnings.push("Data found after edict "+edictID+" body");
 			
-			var thisEdict = new Edict();
+			var thisEdict = new Edict(edictID);
 			
 			// Break the body into individual expressions
 			// Returns 1 unmatched/remainder string, plus 5 entries per expression (type1, value1, type2, value2, and unmatched/remainder)
@@ -304,14 +341,14 @@ function loadFile(fileList)
 	
 	var reader = new FileReader();
 	
-	reader.onload = (res) => { parseData(res.target.result); };
+	reader.onload = (res) => { parseData(file.name, res.target.result); };
 	reader.onerror = (res) => { updateFileStatus("rejected", "The file reader returned error code "+res.target.error.code+". Please check the file and try again."); };
 	
 	updateFileStatus("loading", "");
 	reader.readAsText(file);
 }
 
-function parseData(data)
+function parseData(filename, data)
 {
 	// Standardize newlines and remove empty lines in case the user manually edited the file
 	data = data.replace(/\r+\n/g, "\n").replace(/\n\s*\n/g, "\n");
@@ -372,7 +409,7 @@ function parseData(data)
 	// Edict value validation
 	edictCollection.validateEdicts(dataSections['Dict']);
 	
-	// TODO: Display parsed results in the UI
+	renderTreeView(filename, edictCollection);
 	
 	if (parseWarnings.length > 0) updateFileStatus("warning", parseWarnings.join("<br>"));
 	else updateFileStatus("accepted", "");
@@ -408,6 +445,66 @@ function edictStringToStringArray(str)
 	if (totalLength < str.length) result.warnings.push("Edict string contained some junk data, which we removed");
 	
 	return result;
+}
+
+function renderTreeView(filename, edictCollection)
+{
+	var treeview = $("#treeview > details");
+	treeview.empty();
+	treeview.prop("open", true);
+	
+	treeview.append($("<summary></summary>").text(filename));
+	
+	// Build the entity list
+	var entList = $("<details><summary>Entity List</summary></details>");
+	edictCollection.getEntities().forEach((thisEntity) => {
+		var thisItem = $("<div></div>").text(thisEntity.getID());
+		entList.append(thisItem);
+	});
+	
+	// Build the constraint list
+	var constList = $("<details><summary>Constraint List</summary></details>");
+	edictCollection.getConstraints().forEach((thisConstraint) => {
+		var thisItem = $("<div></div>").text(thisConstraint.getID());
+		constList.append(thisItem);
+	});
+	
+	// Build the associative tree
+	var assocTree = $("<details><summary>Associative View</summary></details>");
+	assocTree.append(buildEdictTree(edictCollection, edictCollection.getHeadEntity()));
+	assocTree.append(buildEdictTree(edictCollection, edictCollection.getHeadConstraint()));
+	
+	// Add the trees and lists to the view
+	treeview.append(entList);
+	treeview.append(constList);
+	treeview.append(assocTree);
+}
+
+// Recursively builds an associative tree view from the given entity
+function buildEdictTree(edictCollection, currentEdict)
+{
+	if (currentEdict === undefined) return $("<div>(undefined edict)</div>");
+	
+	var label = currentEdict.getID();
+	if (currentEdict == edictCollection.getHeadEntity()) label += " (head entity)";
+	else if (currentEdict == edictCollection.getHeadConstraint()) label += " (head constraint)";
+	
+	var children = [];
+	currentEdict.getExpressions().forEach((expr) => {
+		if (expr.getLeftType() == ExpressionType.table) children.push(buildEdictTree(edictCollection, edictCollection.getEdict(expr.getLeftValue())));
+		if (expr.getRightType() == ExpressionType.table) children.push(buildEdictTree(edictCollection, edictCollection.getEdict(expr.getRightValue())));
+	});
+	
+	var displayItem;
+	if (children.length == 0) displayItem = $("<div></div>").text(label);
+	else
+	{
+		displayItem = $("<details></details>");
+		displayItem.append($("<summary></summary>").text(label));
+		children.forEach((child) => displayItem.append(child));
+	}
+	
+	return displayItem;
 }
 
 function updateFileStatus(status, details)
@@ -456,6 +553,9 @@ $(document).ready(() => { $('body').on('dragover', handleFileDragOver); });
 
 <div id="treeview">
 	<h2>Treeview</h2>
+	<details open>
+		<summary>(no file loaded)</summary>
+	</details>
 </div>
 
 <div id="inspector">
