@@ -25,9 +25,9 @@ body {
 		"treeview inspector";
 }
 body > * { background-color:white; padding:0px 8px; }
-#header { grid-area:header; }
-#treeview { grid-area:treeview; overflow-y:scroll; }
-#inspector { grid-area:inspector; overflow-y:scroll; }
+#header { grid-area:header; position:relative; }
+#treeview { grid-area:treeview; overflow-y:scroll; position:relative; }
+#inspector { grid-area:inspector; overflow-y:scroll; position:relative; }
 
 h1 { font-size:1.5em; margin-top:0px; }
 h2 { font-size:1.2em; margin-top:0px; }
@@ -53,6 +53,8 @@ details > summary::before { content:'+'; margin-right:0.5em; }
 details[open] > summary::before { font-family:'Courier New', monospace; content:'-'; }
 details > div { }
 details > div::before { font-family:'Courier New', monospace; content:'-'; margin-right:0.5em; }
+details > summary.inspecting, details > div.inspecting { background-color:#DFDFDF; }
+details > summary.inspecting::after, details > div.inspecting::after { font-family:'Courier New', monospace; content:'->'; float:right; margin-right:15px; }
 
 </style>
 <script>
@@ -207,13 +209,13 @@ class EdictCollection
 	
 	getEntities()
 	{
-		// Object.values sorts the properties by key in alphanumeric order
+		// Object.values sorts the properties by creation order
 		return Object.values(this.entities);
 	}
 	
 	getConstraints()
 	{
-		// Object.values sorts the properties by key in alphanumeric order
+		// Object.values sorts the properties by creation order
 		return Object.values(this.constraints);
 	}
 	
@@ -406,10 +408,14 @@ function parseData(filename, data)
 	
 	console.log("edict collection: ", edictCollection);
 	
+	// TODO: Dictionary validation
+	
 	// Edict value validation
 	edictCollection.validateEdicts(dataSections['Dict']);
 	
 	renderTreeView(filename, edictCollection);
+	setupDetailsView(filename, dataSections, edictCollection);
+	showFileDetails();
 	
 	if (parseWarnings.length > 0) updateFileStatus("warning", parseWarnings.join("<br>"));
 	else updateFileStatus("accepted", "");
@@ -453,19 +459,20 @@ function renderTreeView(filename, edictCollection)
 	treeview.empty();
 	treeview.prop("open", true);
 	
-	treeview.append($("<summary></summary>").text(filename));
+	var fileitem = $("<summary class='fileitem inspectable'></summary>").text(filename);
+	treeview.append(fileitem);
 	
 	// Build the entity list
 	var entList = $("<details><summary>Entity List</summary></details>");
 	edictCollection.getEntities().forEach((thisEntity) => {
-		var thisItem = $("<div></div>").text(thisEntity.getID());
+		var thisItem = $("<div class='inspectable'></div>").text(thisEntity.getID()).data("edictid", thisEntity.getID());
 		entList.append(thisItem);
 	});
 	
 	// Build the constraint list
 	var constList = $("<details><summary>Constraint List</summary></details>");
 	edictCollection.getConstraints().forEach((thisConstraint) => {
-		var thisItem = $("<div></div>").text(thisConstraint.getID());
+		var thisItem = $("<div class='inspectable'></div>").text(thisConstraint.getID()).data("edictid", thisConstraint.getID());
 		constList.append(thisItem);
 	});
 	
@@ -478,6 +485,10 @@ function renderTreeView(filename, edictCollection)
 	treeview.append(entList);
 	treeview.append(constList);
 	treeview.append(assocTree);
+	
+	// Bind to inspectable element click events, then inspect the file item to begin with
+	treeview.find(".inspectable").click(() => { updateInspectionTarget($(this)); })
+	fileitem.click();
 }
 
 // Recursively builds an associative tree view from the given entity
@@ -496,15 +507,77 @@ function buildEdictTree(edictCollection, currentEdict)
 	});
 	
 	var displayItem;
-	if (children.length == 0) displayItem = $("<div></div>").text(label);
+	if (children.length == 0) displayItem = $("<div class='inspectable associative'></div>").text(label).data("edictid", currentEdict.getID());
 	else
 	{
 		displayItem = $("<details></details>");
-		displayItem.append($("<summary></summary>").text(label));
+		displayItem.append($("<summary class='inspectable associative'></summary>").text(label).data("edictid", currentEdict.getID()));
 		children.forEach((child) => displayItem.append(child));
 	}
 	
 	return displayItem;
+}
+
+// Set the details view data contexts for access when we try to render
+function setupDetailsView(filename, dataSections, edictCollection)
+{
+	$("#inspector")
+	  .data("filename", filename)
+	  .data("datasections", dataSections)
+	  .data("edictcollection", edictCollection);
+}
+
+function showFileDetails()
+{
+	var detailsview = $("#inspector");
+	detailsview.empty();
+	detailsview.append($("<h2></h2>").text(detailsview.data("filename")));
+	
+	var infosection;
+	infosection = $("<div><b>Info:</b><ul></ul></div>");
+	Object.entries(detailsview.data("datasections")['Info']).forEach(([key, val]) => {
+		infosection.find("ul").append($("<li></li>").text(key+": "+val));
+	});
+	detailsview.append(infosection);
+	
+	infosection = $("<div><b>More Information:</b><ul></ul></div>");
+	Object.entries(detailsview.data("datasections")['More Information']).forEach(([key, val]) => {
+		infosection.find("ul").append($("<li></li>").text(key+": "+val));
+	});
+	detailsview.append(infosection);
+	
+	infosection = $("<div><b>Dictionary:</b><ul></ul></div>");
+	Object.entries(detailsview.data("datasections")['Dict']).forEach(([key, val]) => {
+		infosection.find("ul").append($("<li></li>").text(key+": "+val));
+	});
+	detailsview.append(infosection);
+}
+
+// Shows the details view for the given edict. The isAssociative parameter is a boolean value to control the resulting view's
+//  handling of child edicts -- true will create links to the edict in the associative tree, false will create links to the edict in the list view
+function showEdictDetails(edictID, isAssociative)
+{
+	var thisEdict = $("#inspector").data("edictcollection").getEdict(edictID);
+	// TODO: Display the edict's details
+}
+
+function updateInspectionTarget(target)
+{
+	$("#treeview > details .inspecting").removeClass("inspecting");
+	target.addClass("inspecting");
+	if (target.hasClass("fileitem")) showFileDetails();
+	else showEdictDetails(target.data("edictid"), target.hasClass("associative"));
+	
+	// Open any parent trees to the target
+	target.parentsUntil("details", "#treeview").prop("open", true);
+	
+	// Scroll the tree view to show the target
+	var viewCeiling = $("#treeview").scrollTop();
+	var viewFloor = viewCeiling + $("#treeview").height();
+	var targetCeiling = target.position().top;
+	var targetFloor = target.position().top + target.height();
+	if (targetCeiling < viewCeiling) $("#treeview").scrollTop(targetCeiling);
+	else if (targetFloor > viewFloor) $("#treeview").scrollTop(targetFloor-$("#treeview").height());
 }
 
 function updateFileStatus(status, details)
