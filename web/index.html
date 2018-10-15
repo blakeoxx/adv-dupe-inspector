@@ -122,16 +122,16 @@ var ExpressionType = Object.freeze({
 		default: return '';
 	} },
 	enumToCSSClass: function(val) { switch(val){
-		case this.dictionary: return cssPrefix+"dict";
-		case this.dictionaryEscaped: return cssPrefix+"dictesc";
-		case this.table: return cssPrefix+"table";
-		case this.player: return cssPrefix+"player";
-		case this.angle: return cssPrefix+"angle";
-		case this.vector: return cssPrefix+"vector";
-		case this.boolean: return cssPrefix+"boolean";
-		case this.string: return cssPrefix+"string";
-		case this.number: return cssPrefix+"number";
-		default: return cssPrefix+"unset";
+		case this.dictionary: return this.cssPrefix+"dict";
+		case this.dictionaryEscaped: return this.cssPrefix+"dictesc";
+		case this.table: return this.cssPrefix+"table";
+		case this.player: return this.cssPrefix+"player";
+		case this.angle: return this.cssPrefix+"angle";
+		case this.vector: return this.cssPrefix+"vector";
+		case this.boolean: return this.cssPrefix+"boolean";
+		case this.string: return this.cssPrefix+"string";
+		case this.number: return this.cssPrefix+"number";
+		default: return this.cssPrefix+"unset";
 	} }
 });
 
@@ -176,10 +176,10 @@ class EdictExpression
 // class Edict
 class Edict
 {
-	constructor(edictID, isEntity)
+	constructor(edictID, isEntityFlag)
 	{
 		this.edictID = edictID;
-		this.isEntity = (isEntity?true:false);
+		this.isEntityFlag = (isEntityFlag?true:false);
 		this.expressions = [];
 	}
 	
@@ -190,7 +190,7 @@ class Edict
 	
 	isEntity()
 	{
-		return this.isEntity;
+		return this.isEntityFlag;
 	}
 	
 	getExpressions()
@@ -203,9 +203,9 @@ class Edict
 		this.edictID = newID;
 	}
 	
-	setIsEntity(isEntity)
+	setIsEntity(isEntityFlag)
 	{
-		this.isEntity = (isEntity?true:false);
+		this.isEntityFlag = (isEntityFlag?true:false);
 	}
 	
 	addExpression(edictExpr)
@@ -448,11 +448,8 @@ function parseData(filename, data)
 	// Edict value validation
 	edictCollection.validateEdicts(dataSections['Dict']);
 	
-	console.log("rendering tree view...");
 	renderTreeView(filename, edictCollection);
-	console.log("setting up details view...");
 	setupDetailsView(filename, dataSections, edictCollection);
-	console.log("show file details...");
 	$("#treeview > details summary.fileitem").click();
 	
 	if (parseWarnings.length > 0) updateFileStatus("warning", parseWarnings.join("<br>"));
@@ -525,7 +522,7 @@ function renderTreeView(filename, edictCollection)
 	treeview.append(assocTree);
 	
 	// Bind to inspectable element click events
-	treeview.find(".inspectable").click(function(){ updateInspectionTarget($(this)); });
+	treeview.find(".inspectable").click(function(event){ event.stopPropagation(); event.preventDefault(); updateInspectionTarget($(this)); });
 }
 
 // Recursively builds an associative tree view from the given entity
@@ -598,7 +595,6 @@ function showFileDetails()
 function showEdictDetails(edictID, isAssociative)
 {
 	var detailsview = $("#inspector");
-	console.log("data on detailsview: "+detailsview.data());
 	var dictionary = detailsview.data("datasections")['Dict'];
 	var edictCollection = detailsview.data("edictcollection");
 	var thisEdict = edictCollection.getEdict(edictID);
@@ -669,14 +665,18 @@ function showEdictDetails(edictID, isAssociative)
 	exprelem = $("<li><span class='lval'></span> = <span class='rval'></span></li>");
 	thisEdict.getExpressions().forEach((expr) => {
 		var thisElem = exprelem.clone();
-		var lval = thisElem.find(".lval");
-		var rval = thisElem.find(".rval");
+		var leftFormatted = formatExprVal(expr.getLeftType(), expr.getLeftValue());
+		var rightFormatted = formatExprVal(expr.getRightType(), expr.getRightValue());
 		
-		lval.addClass(ExpressionType.enumToCSSClass(expr.getLeftType()));
-		if (expr.getLeftType() == ExpressionType.dictionary) lval.text(expr.getLeftValue());
+		thisElem.find(".lval")
+		  .addClass(ExpressionType.enumToCSSClass(expr.getLeftType()))
+		  .addClass(leftFormatted.classes.join(" "))
+		  .html(leftFormatted.formattedValue);
 		
-		rval.addClass(ExpressionType.enumToCSSClass(expr.getLeftType()));
-		if (expr.getRightType() == ExpressionType.dictionary) rval.text(expr.getRightValue());
+		thisElem.find(".rval")
+		  .addClass(ExpressionType.enumToCSSClass(expr.getRightType()))
+		  .addClass(rightFormatted.classes.join(" "))
+		  .html(rightFormatted.formattedValue);
 		
 		infolist.append(thisElem);
 	});
@@ -685,14 +685,13 @@ function showEdictDetails(edictID, isAssociative)
 
 function updateInspectionTarget(target)
 {
-	console.log("updating inspection target to: ", target);
 	$("#treeview > details .inspecting").removeClass("inspecting");
 	target.addClass("inspecting");
-	if (target.hasClass("fileitem")){ console.log("fileitem target"); showFileDetails(); }
-	else{ console.log("edict target"); showEdictDetails(target.data("edictid"), target.hasClass("associative")); }
+	if (target.hasClass("fileitem")) showFileDetails();
+	else showEdictDetails(target.data("edictid"), target.hasClass("associative"));
 	
 	// Open any parent trees to the target
-	target.parentsUntil("details", "#treeview").prop("open", true);
+	target.parentsUntil("#treeview", "details").prop("open", true);
 	
 	// Scroll the tree view to show the target
 	var viewCeiling = $("#treeview").scrollTop();
