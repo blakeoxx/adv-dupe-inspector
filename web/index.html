@@ -498,21 +498,21 @@ function renderTreeView(filename, edictCollection)
 	treeview.append(fileitem);
 	
 	// Build the entity list
-	var entList = $("<details><summary>Entity List</summary></details>");
+	var entList = $("<details class='topnode listview'><summary>Entity List</summary></details>");
 	edictCollection.getEntities().forEach((thisEntity) => {
 		var thisItem = $("<div class='inspectable'></div>").text(thisEntity.getID()).data("edictid", thisEntity.getID());
 		entList.append(thisItem);
 	});
 	
 	// Build the constraint list
-	var constList = $("<details><summary>Constraint List</summary></details>");
+	var constList = $("<details class='topnode listview'><summary>Constraint List</summary></details>");
 	edictCollection.getConstraints().forEach((thisConstraint) => {
 		var thisItem = $("<div class='inspectable'></div>").text(thisConstraint.getID()).data("edictid", thisConstraint.getID());
 		constList.append(thisItem);
 	});
 	
 	// Build the associative tree
-	var assocTree = $("<details><summary>Associative View</summary></details>");
+	var assocTree = $("<details class='topnode assocview'><summary>Associative View</summary></details>");
 	assocTree.append(buildEdictTree(edictCollection, edictCollection.getHeadEntity()));
 	assocTree.append(buildEdictTree(edictCollection, edictCollection.getHeadConstraint()));
 	
@@ -704,7 +704,32 @@ function updateInspectionTarget(target)
 
 function updateInspectionEdict(edictID, isAssociative)
 {
-	// TODO
+	var targetElem = null;
+	if (isAssociative)
+	{
+		var inspected = $("#treeview > details .inspecting");
+		var foundelem = inspected.closest("details").find(".inspectable[data-edictid='"+edictID+"']");
+		if (foundelem.length == 0)
+		{
+			var ancestors = inspected.parentsUntil("#treeview", "details");
+			var parentIndex = 0;
+			while (foundelem.length == 0 && parentIndex < ancestors.length) foundelem = ancestors.eq(parentIndex++).find(".inspectable[data-edictid='"+edictID+"']");
+		}
+		
+		if (foundelem.length > 0) targetElem = foundelem.first();
+	}
+	else
+	{
+		var foundelem = $("#treeview > details .listview .inspectable[data-edictid='"+edictID+"']");
+		if (foundelem.length > 0) targetElem = foundelem.first();
+	}
+	
+	if (targetElem == null) return false;
+	else
+	{
+		updateInspectionTarget(targetElem);
+		return true;
+	}
 }
 
 function updateFileStatus(status, details)
