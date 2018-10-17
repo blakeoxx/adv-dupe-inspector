@@ -501,14 +501,14 @@ function renderTreeView(filename, edictCollection)
 	// Build the entity list
 	var entList = $("<details class='topnode listview'><summary>Entity List</summary></details>");
 	edictCollection.getEntities().forEach((thisEntity) => {
-		var thisItem = $("<div class='inspectable'></div>").text(thisEntity.getID()).data("edictid", thisEntity.getID());
+		var thisItem = $("<div class='inspectable'></div>").text(thisEntity.getID()).attr("data-edictid", thisEntity.getID());
 		entList.append(thisItem);
 	});
 	
 	// Build the constraint list
 	var constList = $("<details class='topnode listview'><summary>Constraint List</summary></details>");
 	edictCollection.getConstraints().forEach((thisConstraint) => {
-		var thisItem = $("<div class='inspectable'></div>").text(thisConstraint.getID()).data("edictid", thisConstraint.getID());
+		var thisItem = $("<div class='inspectable'></div>").text(thisConstraint.getID()).attr("data-edictid", thisConstraint.getID());
 		constList.append(thisItem);
 	});
 	
@@ -542,11 +542,11 @@ function buildEdictTree(edictCollection, currentEdict)
 	});
 	
 	var displayItem;
-	if (children.length == 0) displayItem = $("<div class='inspectable associative'></div>").text(label).data("edictid", currentEdict.getID());
+	if (children.length == 0) displayItem = $("<div class='inspectable associative'></div>").text(label).attr("data-edictid", currentEdict.getID());
 	else
 	{
 		displayItem = $("<details></details>");
-		displayItem.append($("<summary class='inspectable associative'></summary>").text(label).data("edictid", currentEdict.getID()));
+		displayItem.append($("<summary class='inspectable associative'></summary>").text(label).attr("data-edictid", currentEdict.getID()));
 		children.forEach((child) => displayItem.append(child));
 	}
 	
@@ -636,7 +636,7 @@ function showEdictDetails(edictID, isAssociative)
 			else
 			{
 				var edictParam = origValue.replace(/'|\\/g, "\\$&");
-				result.formattedValue = "<a href='#' onclick='updateInspectionEdict('"+edictParam+"', "+isAssociative+")'>"+encodeURIComponent(origValue)+"</a>";
+				result.formattedValue = "<a href='#' onclick='updateInspectionEdict(\""+edictParam+"\", "+isAssociative+")'>"+encodeURIComponent(origValue)+"</a>";
 			}
 		}
 		else if (exprType == ExpressionType.angle || exprType == ExpressionType.vector)
