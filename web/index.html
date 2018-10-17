@@ -19,15 +19,16 @@ body {
 	display: grid;
 	grid-gap: 3px;
 	grid-template-columns: 1fr 2fr;
-	grid-template-rows: 150px auto;
+	grid-template-rows: 150px calc(100vh - 150px - 3px);		/* Row 2's height is 100% minus row 1's height minus the grid gap */
 	grid-template-areas:
 		"header header"
 		"treeview inspector";
 }
 body > * { background-color:white; padding:0px 8px; }
 #header { grid-area:header; position:relative; }
-#treeview { grid-area:treeview; overflow-y:scroll; position:relative; }
-#inspector { grid-area:inspector; overflow-y:scroll; position:relative; }
+#treeview-container { grid-area:treeview; overflow:auto scroll; position:relative; }
+#inspector-container { grid-area:inspector; overflow:auto scroll; position:relative; }
+#treeview, #inspector { margin:0; padding:0; }
 
 h1 { font-size:1.5em; margin-top:0px; }
 h2 { font-size:1.2em; margin-top:0px; }
@@ -776,15 +777,19 @@ $(document).ready(() => { $('body').on('dragover', handleFileDragOver); });
 	</div>
 </div>
 
-<div id="treeview">
-	<h2>Treeview</h2>
-	<details open>
-		<summary>(no file loaded)</summary>
-	</details>
+<div id="treeview-container">
+	<div id="treeview">
+		<h2>Treeview</h2>
+		<details open>
+			<summary>(no file loaded)</summary>
+		</details>
+	</div>
 </div>
 
-<div id="inspector">
-	<h2>Inspector area</h2>
+<div id="inspector-container">
+	<div id="inspector">
+		<h2>Inspector area</h2>
+	</div>
 </div>
 
 </body>
