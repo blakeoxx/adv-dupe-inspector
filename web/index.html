@@ -57,21 +57,39 @@ h2 { font-size:1.2em; margin-top:0px; }
 #treeview details > summary.inspecting, #treeview details > div.inspecting { background-color:#DFDFDF; }
 #treeview details > summary.inspecting::after, #treeview details > div.inspecting::after { font-family:'Courier New', monospace; content:'->'; float:right; margin-right:15px; }
 
+#inspector table.expr-list { border:none; margin:1em 20px; }
+#inspector table.expr-list tr td:nth-of-type(2) { padding-left:0.5em; padding-right:0.5em; }
+#inspector table.expr-list .bullet::before { content:'•'; font-size:1.3em; margin-right:0.5em; vertical-align:middle; }
+#inspector .lval::before, #inspector .rval::before { background-color:#E0E0E0; font-size:80%; margin-right:0.5em; vertical-align:text-bottom; padding:0 2px; }
+#inspector .expr-value-invalid::after { background-color:#E8F48C; color:#98A43C; font-size:80%; margin-left:0.5em; vertical-align:text-bottom; padding:0 2px; content:'(value invalid)'; }
 #inspector .expr-type-unset { color:#AF4849; }
-#inspector .expr-type-dict { color:#F0F000; }
+#inspector .expr-type-unset::before { content:'unset:'; }
+#inspector .expr-type-dict { color:#F0A000; }
+#inspector .expr-type-dict::before { content:'dict:'; }
 #inspector .expr-type-dictesc { color:#98A43C; }
+#inspector .expr-type-dictesc::before { content:'dictesc:'; }
 #inspector .expr-type-table { }
-#inspector .expr-type-player { color:#F0F000; }
+#inspector .expr-type-table::before { content:'edict:'; }
+#inspector .expr-type-player { color:#A0F000; }
+#inspector .expr-type-player::before { content:'ply:'; }
 #inspector .expr-type-angle { color:#F00F00; }
+#inspector .expr-type-angle::before { content:'ang:'; }
 #inspector .expr-type-vector { color:#F000F0; }
+#inspector .expr-type-vector::before { content:'vec:'; }
 #inspector .expr-type-boolean { color:#0000FF; }
+#inspector .expr-type-boolean::before { content:'bool:'; }
 #inspector .expr-type-string { color:#0A64C0; }
+#inspector .expr-type-string::before { content:'str:'; }
 #inspector .expr-type-number { color:#00AF2F; }
+#inspector .expr-type-number::before { content:'num:'; }
 
 </style>
 <script>
 
 var fileStatusMsg = {accepted: "Ready to inspect", rejected: "Parsing error", warning: "Optimizations possible" };
+
+var encodeHTML = s => $("<div/>").text(s).html();
+var decodeHTML = s => $("<div/>").html(s).text();
 
 // enum ExpressionType
 var ExpressionType = Object.freeze({
@@ -401,8 +419,8 @@ function parseData(filename, data)
 	for (var i = 1; i < splits.length; i+=2)
 	{
 		// Each section becomes a property of the dataSections object, whose value is an array of strings delimited by newlines
-		if (dataSections[splits[i]] !== undefined) parseWarnings.push("Section '"+encodeURIComponent(splits[i])+"' was defined multiple times");
-		else if (expectedDataSections.indexOf(splits[i]) < 0) parseWarnings.push("Unrecognized section '"+encodeURIComponent(splits[i])+"'");
+		if (dataSections[splits[i]] !== undefined) parseWarnings.push("Section '"+splits[i]+"' was defined multiple times");
+		else if (expectedDataSections.indexOf(splits[i]) < 0) parseWarnings.push("Unrecognized section '"+splits[i]+"'");
 		dataSections[splits[i]] = splits[i+1].split("\n");
 	}
 	
@@ -411,7 +429,7 @@ function parseData(filename, data)
 	{
 		if (dataSections[expectedDataSections[i]] === undefined)
 		{
-			updateFileStatus("rejected", "Section '"+encodeURIComponent(expectedDataSections[i])+"' missing");
+			updateFileStatus("rejected", "Section '"+expectedDataSections[i]+"' missing");
 			return;
 		}
 	}
@@ -453,7 +471,7 @@ function parseData(filename, data)
 	setupDetailsView(filename, dataSections, edictCollection);
 	$("#treeview > details summary.fileitem").click();
 	
-	if (parseWarnings.length > 0) updateFileStatus("warning", parseWarnings.join("<br>"));
+	if (parseWarnings.length > 0) updateFileStatus("warning", parseWarnings.map(x => encodeHTML(x)).join("<br>"));
 	else updateFileStatus("accepted", "");
 }
 
@@ -463,12 +481,12 @@ function stringArrayToKV(arr)
 	var result = {result:{}, warnings:[]};
 	arr.forEach((str) => {
 		var splitIdx = str.indexOf(":");
-		if (splitIdx < 0 || splitIdx == str.length-1){ result.warnings.push("Key '"+encodeURIComponent(str)+"' has no value"); splitIdx = (splitIdx<0?str.length:splitIdx); }
-		else if (splitIdx == 0) result.warnings.push("Value '"+encodeURIComponent(str)+"' has no key");
+		if (splitIdx < 0 || splitIdx == str.length-1){ result.warnings.push("Key '"+str+"' has no value"); splitIdx = (splitIdx<0?str.length:splitIdx); }
+		else if (splitIdx == 0) result.warnings.push("Value '"+str+"' has no key");
 		
 		var key = str.slice(0, splitIdx);
 		var val = str.slice(splitIdx+1);
-		if (result.result[key] !== undefined) result.warnings.push("Key '"+encodeURIComponent(key)+"' was defined multiple times");
+		if (result.result[key] !== undefined) result.warnings.push("Key '"+key+"' was defined multiple times");
 		result.result[key] = val.replace(/(^\")|(\"$)/g, "");
 	});
 	return result;
@@ -615,28 +633,28 @@ function showEdictDetails(edictID, isAssociative)
 		if (!isValid)
 		{
 			result.classes.push("expr-value-invalid");
-			result.formattedValue = encodeURIComponent(origValue);
+			result.formattedValue = encodeHTML(origValue);
 		}
 		else if (exprType == ExpressionType.dictionary || exprType == ExpressionType.dictionaryEscaped)
 		{
 			if (dictionary[origValue] === undefined)
 			{
 				result.classes.push("expr-value-notfound");
-				result.formattedValue = encodeURIComponent(origValue);
+				result.formattedValue = encodeHTML(origValue);
 			}
-			else result.formattedValue = encodeURIComponent(dictionary[origValue]);
+			else result.formattedValue = encodeHTML(dictionary[origValue]);
 		}
 		else if (exprType == ExpressionType.table)
 		{
 			if (edictCollection.getEdict(origValue) === undefined)
 			{
 				result.classes.push("expr-value-notfound");
-				result.formattedValue = encodeURIComponent(origValue);
+				result.formattedValue = encodeHTML(origValue);
 			}
 			else
 			{
 				var edictParam = origValue.replace(/'|\\/g, "\\$&");
-				result.formattedValue = "<a href='#' onclick='updateInspectionEdict(\""+edictParam+"\", "+isAssociative+")'>"+encodeURIComponent(origValue)+"</a>";
+				result.formattedValue = "<a href='#' onclick='updateInspectionEdict(\""+edictParam+"\", "+isAssociative+")'>"+encodeHTML(origValue)+"</a>";
 			}
 		}
 		else if (exprType == ExpressionType.angle || exprType == ExpressionType.vector)
@@ -648,22 +666,18 @@ function showEdictDetails(edictID, isAssociative)
 		{
 			result.formattedValue = (origValue?"TRUE":"FALSE");
 		}
-		else if (exprType == ExpressionType.string)
+		else	// Everything else including string, player, and number values
 		{
-			result.formattedValue = '"' + encodeURIComponent(origValue) + '"';
-		}
-		else	// Everything else including player and number values
-		{
-			result.formattedValue = encodeURIComponent(origValue);
+			result.formattedValue = encodeHTML(origValue);
 		}
 		
 		return result;
 	};
 	
 	var infosection, infolist, exprelem;
-	infosection = $("<div><b>Expressions:</b><ul></ul></div>");
-	infolist = infosection.find("ul");
-	exprelem = $("<li><span class='lval'></span> = <span class='rval'></span></li>");
+	infosection = $("<div><b>Expressions:</b><table class='expr-list'></table></div>");
+	infolist = infosection.find("table");
+	exprelem = $("<tr><td><i class='bullet'></i><span class='lval'></span></td><td>=</td><td><span class='rval'></span></td></tr>");
 	thisEdict.getExpressions().forEach((expr) => {
 		var thisElem = exprelem.clone();
 		var leftFormatted = formatExprVal(expr.getLeftType(), expr.getLeftValue());
