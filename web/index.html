@@ -111,7 +111,7 @@ var ExpressionType = Object.freeze({
 		/^\d+$/,			// player
 		/^(-?\d+(?:.\d+)?),(-?\d+(?:.\d+)?),(-?\d+(?:.\d+)?)$/,		// angle
 		/^(-?\d+(?:.\d+)?),(-?\d+(?:.\d+)?),(-?\d+(?:.\d+)?)$/,		// vector
-		/^[0-1]$/,			// boolean
+		/^t|f$/,			// boolean
 		/^"[^"]*"$/,		// string
 		/^-?\d+(.\d+)?$/	// number
 	],
@@ -664,7 +664,7 @@ function showEdictDetails(edictID, isAssociative)
 		}
 		else if (exprType == ExpressionType.boolean)
 		{
-			result.formattedValue = (origValue?"TRUE":"FALSE");
+			result.formattedValue = (origValue=="t"?"TRUE":"FALSE");
 		}
 		else	// Everything else including string, player, and number values
 		{
