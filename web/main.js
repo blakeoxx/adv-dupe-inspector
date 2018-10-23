@@ -197,6 +197,12 @@ class EdictCollection
 	{
 		var warnings = [];
 		
+		var dictCounter = {};
+		var edictCounter = {};
+		Object.keys(dictionary).forEach((k) => dictCounter[k] = 0);
+		Object.keys(this.entities).concat(Object.keys(this.constraints)).forEach((k) => edictCounter[k] = 0);
+		
+		// Go through all the edicts for validation
 		this.getEntities().concat(this.getConstraints()).forEach((thisEdict) => {
 			var edictID = thisEdict.getID();
 			
@@ -205,17 +211,50 @@ class EdictCollection
 				if (!expr.isValid()) warnings.push("Edict "+edictID+" expression "+idx+" value doesn't match type");
 				else
 				{
-					if (expr.getLeftType() == ExpressionType.table && this.getEdict(expr.getLeftValue()) === undefined) warnings.push("Edict "+edictID+" expression "+idx+" left value references a non-existent entity");
-					else if (expr.getLeftType() == ExpressionType.dictionary && dictionary[expr.getLeftValue()] === undefined) warnings.push("Edict "+edictID+" expression "+idx+" left value references a non-existent dictionary entry");
-					else if (expr.getLeftType() == ExpressionType.dictionaryEscaped && dictionary[expr.getLeftValue()] === undefined) warnings.push("Edict "+edictID+" expression "+idx+" left value references a non-existent dictionary entry");
+					// Check the left value reference and count it if it's valid
+					if (expr.getLeftType() == ExpressionType.table)
+					{
+						if (this.getEdict(expr.getLeftValue()) === undefined) warnings.push("Edict "+edictID+" expression "+idx+" left value references a non-existent edict");
+						else edictCounter[expr.getLeftValue()]++;
+					}
+					else if (expr.getLeftType() == ExpressionType.dictionary)
+					{
+						if (dictionary[expr.getLeftValue()] === undefined) warnings.push("Edict "+edictID+" expression "+idx+" left value references a non-existent dictionary entry");
+						else dictCounter[expr.getLeftValue()]++;
+					}
+					else if (expr.getLeftType() == ExpressionType.dictionaryEscaped)
+					{
+						if (dictionary[expr.getLeftValue()] === undefined) warnings.push("Edict "+edictID+" expression "+idx+" left value references a non-existent dictionary entry");
+						else dictCounter[expr.getLeftValue()]++;
+					}
 					
-					if (expr.getRightType() == ExpressionType.table && this.getEdict(expr.getRightValue()) === undefined) warnings.push("Edict "+edictID+" expression "+idx+" right value references a non-existent entity");
-					else if (expr.getRightType() == ExpressionType.dictionary && dictionary[expr.getRightValue()] === undefined) warnings.push("Edict "+edictID+" expression "+idx+" right value references a non-existent dictionary entry");
-					else if (expr.getRightType() == ExpressionType.dictionaryEscaped && dictionary[expr.getRightValue()] === undefined) warnings.push("Edict "+edictID+" expression "+idx+" right value references a non-existent dictionary entry");
-					
-					// TODO: Count dictionary and edict references
+					// Check the right value reference and count it if it's valid
+					if (expr.getRightType() == ExpressionType.table)
+					{
+						if (this.getEdict(expr.getRightValue()) === undefined) warnings.push("Edict "+edictID+" expression "+idx+" right value references a non-existent edict");
+						else edictCounter[expr.getRightValue()]++;
+					}
+					else if (expr.getRightType() == ExpressionType.dictionary)
+					{
+						if (dictionary[expr.getRightValue()] === undefined) warnings.push("Edict "+edictID+" expression "+idx+" right value references a non-existent dictionary entry");
+						else dictCounter[expr.getRightValue()]++;
+					}
+					else if (expr.getRightType() == ExpressionType.dictionaryEscaped)
+					{
+						if (dictionary[expr.getRightValue()] === undefined) warnings.push("Edict "+edictID+" expression "+idx+" right value references a non-existent dictionary entry");
+						else dictCounter[expr.getRightValue()]++;
+					}
 				}
 			});
+		});
+		
+		// Warn if a dictionary entry wasn't referenced
+		Object.entries(dictCounter).forEach(([k,v]) => {
+			if (v < 1) warnings.push("Dictionary entry "+k+" is never referenced");
+		});
+		// Warn if an edict wasn't referenced
+		Object.entries(edictCounter).forEach(([k,v]) => {
+			if (v < 1) warnings.push("Edict "+k+" is never referenced");
 		});
 		
 		return warnings;
@@ -227,6 +266,7 @@ class EdictCollection
 		var result = this.stringArrayToEdicts(arr, true);
 		this.entities = result.edicts;
 		this.headEntityID = result.head;
+		if (result.head === undefined) result.warnings.push("Head entity not found");
 		return result.warnings;
 	}
 	
@@ -236,10 +276,11 @@ class EdictCollection
 		var result = this.stringArrayToEdicts(arr, false);
 		this.constraints = result.edicts;
 		this.headConstraintID = result.head;
+		if (result.head === undefined) result.warnings.push("Head constraint not found");
 		return result.warnings;
 	}
 	
-	// Takes an array of strings formatted as "identity{type:value=type:value;...}", and returns an object{head, edicts{}, warnings[]}. Object.head is the entity ID of the head entity, if found.
+	// Takes an array of strings formatted as "identity{type:value=type:value;...}", and returns an object{head, edicts{}, warnings[]}. Object.head is the edict ID of the head edict, if found.
 	//  Object.edicts is a collection of Edict objects represented by the given array of strings
 	stringArrayToEdicts(arr, isEntity)
 	{
@@ -292,8 +333,6 @@ class EdictCollection
 				result.head = edictID;
 			}
 		});
-		
-		if (result.head === undefined) result.warnings.push("Head entity not found");
 		
 		return result;
 	}
@@ -456,7 +495,7 @@ function renderTreeView(filename, edictCollection)
 	treeview.find(".inspectable").click(function(event){ event.stopPropagation(); event.preventDefault(); updateInspectionTarget($(this)); });
 }
 
-// Recursively builds an associative tree view from the given entity
+// Recursively builds an associative tree view from the given edict
 function buildEdictTree(edictCollection, currentEdict)
 {
 	if (currentEdict === undefined) return $("<div>(undefined edict)</div>");
