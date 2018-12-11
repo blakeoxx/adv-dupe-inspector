@@ -492,7 +492,7 @@ function renderTreeView(filename, edictCollection)
 	treeview.append(assocTree);
 	
 	// Bind to inspectable element click events
-	treeview.find(".inspectable").click(function(event){ event.stopPropagation(); event.preventDefault(); updateInspectionTarget($(this)); });
+	treeview.find(".inspectable").click(function(event){ event.stopPropagation(); event.preventDefault(); updateInspectionTarget($(this), true); });
 }
 
 // Recursively builds an associative tree view from the given edict
@@ -649,8 +649,10 @@ function showEdictDetails(edictID, isAssociative)
 	detailsview.append(infosection);
 }
 
-function updateInspectionTarget(target)
+function updateInspectionTarget(target, isClickEvent)
 {
+	var collapseTarget = (isClickEvent && target.hasClass("inspecting") && target.closest("details").prop("open"));
+	
 	$("#treeview > details .inspecting").removeClass("inspecting");
 	target.addClass("inspecting");
 	if (target.hasClass("fileitem")) showFileDetails();
@@ -658,6 +660,9 @@ function updateInspectionTarget(target)
 	
 	// Open any parent trees to the target
 	target.parentsUntil("#treeview", "details").prop("open", true);
+	
+	// Collapse the target if it was clicked while already opened and focused
+	if (collapseTarget) target.closest("details").prop("open", false);
 	
 	// Scroll the tree view to show the target
 	var viewCeiling = $("#treeview").scrollTop();
