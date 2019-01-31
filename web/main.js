@@ -21,11 +21,11 @@ var ExpressionType = Object.freeze({
 		/^.+$/,				// dictionaryEscaped
 		/^.+$/,				// table
 		/^\d+$/,			// player
-		/^(-?\d+(?:.\d+)?),(-?\d+(?:.\d+)?),(-?\d+(?:.\d+)?)$/,		// angle
-		/^(-?\d+(?:.\d+)(?:e-\d+)?),(-?\d+(?:.\d+)(?:e-\d+)?),(-?\d+(?:.\d+)(?:e-\d+)?)$/,		// vector
+		/^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/,		// angle
+		/^(-?\d+(?:\.\d+)?(?:e-\d+)?),(-?\d+(?:\.\d+)?(?:e-\d+)?),(-?\d+(?:\.\d+)?(?:e-\d+)?)$/,		// vector
 		/^t|f$/,			// boolean
 		/^"[^"]*"$/,		// string
-		/^-?\d+(.\d+)?$/	// number
+		/^-?\d+(\.\d+)?$/	// number
 	],
 	cssPrefix: "expr-type-",
 	charToEnum: function(chr) { switch(chr.toUpperCase()){
