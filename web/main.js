@@ -651,7 +651,7 @@ function showEdictDetails(edictID, isAssociative)
 
 function updateInspectionTarget(target, isClickEvent)
 {
-	var collapseTarget = (isClickEvent && target.hasClass("inspecting") && target.closest("details").prop("open"));
+	var collapseTarget = (isClickEvent && target.is("summary.inspecting") && target.closest("details").prop("open"));
 	
 	$("#treeview > details .inspecting").removeClass("inspecting");
 	target.addClass("inspecting");
@@ -661,7 +661,7 @@ function updateInspectionTarget(target, isClickEvent)
 	// Open any parent trees to the target
 	target.parentsUntil("#treeview", "details").prop("open", true);
 	
-	// Collapse the target if it was clicked while already opened and focused
+	// Collapse the target if it was clicked while already opened and focused, and it's not a child div
 	if (collapseTarget) target.closest("details").prop("open", false);
 	
 	// Scroll the tree view to show the target
