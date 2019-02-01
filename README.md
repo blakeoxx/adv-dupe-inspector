@@ -19,7 +19,6 @@ One entity and one constraint are designated the main tables. Their IDs start wi
 
 
 ## Things to test
-- boolean being set to false
 - string containing double quote
 - empty entities being removed
 - head ID being changed in file header
