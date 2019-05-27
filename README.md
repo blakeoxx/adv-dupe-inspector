@@ -1,6 +1,8 @@
 # Advanced Duplicator Inspector
 A single-page web application for viewing Gmod's Advanced Duplicator files
+
 [Hosted on GitHub Pages](https://blakeoxx.github.io/adv-dupe-inspector/web/)
+
 [Powered by Subnet ROOT](http://www.subnetroot.com)
 
 
