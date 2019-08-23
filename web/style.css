@@ -35,7 +35,7 @@ h2 { font-size:1.2em; margin-top:0px; }
 #fileupload #filestatus.accepted .status-icon.accepted-icon { display:inline-block; }
 #fileupload #filestatus.rejected .status-icon.rejected-icon { display:inline-block; }
 #fileupload #filestatus.warning .status-icon.warning-icon { display:inline-block; }
-#fileupload input[type='file'] { opacity:0; position:absolute; top:0; right:0; width:100%; height:100%; cursor:pointer; }
+#fileupload input[type='file'] { opacity:0; position:absolute; top:-100%; left:0; width:100%; height:200%; font-size:0; cursor:pointer; }
 
 #treeview details { padding-left:1em; }
 #treeview details > summary { margin-left:-1em; list-style:none; cursor:pointer; }
