@@ -1,3 +1,247 @@
-b {
-    color: blue;
+html {
+	width: 100%;
+	height: 100%;
+}
+body {
+	width: 100%;
+	min-height: 100%;
+	margin: 0;
+	padding: 0;
+	background-color: #F0F0F0;
+	
+	display: grid;
+	grid-gap: 3px;
+	grid-template-columns: 1fr 2fr;
+	grid-template-rows: 150px calc(100vh - 150px - 3px);		/* Row 2's height is 100% minus row 1's height minus the grid gap */
+	grid-template-areas:
+		"header header"
+		"treeview inspector";
+}
+body > * {
+	background-color: white;
+	padding: 0 8px;
+}
+#header {
+	grid-area: header;
+	position: relative;
+}
+#treeview-container {
+	grid-area: treeview;
+	overflow: auto scroll;
+	position: relative;
+}
+#inspector-container {
+	grid-area: inspector;
+	overflow: auto scroll;
+	position: relative;
+}
+#treeview, #inspector {
+	margin: 0;
+	padding: 0;
+}
+h1 {
+	font-size: 1.5em;
+	margin-top: 0;
+}
+h2 {
+	font-size: 1.2em;
+	margin-top: 0;
+}
+
+
+/*
+ *	Header section styles
+ */
+#fileupload {
+	position: relative;
+	overflow: hidden;
+	width: 100%;
+	max-width: 500px;
+	border: 3px solid #7CB9E8;
+	background-color: #9EDBFA;
+	color: #0A64C0;
+	font-weight: bold;
+	padding: 4px 4px;
+}
+#fileupload #filestatus {
+	display: inline-block;
+	position: absolute;
+	right: 0;
+	padding: 0 6px;
+}
+#fileupload #filestatus.hidden {
+	display: none;
+}
+#fileupload #filestatus.loading {
+	background-color: inherit;
+	color: inherit;
+}
+#fileupload #filestatus.accepted {
+	background-color: #00FF7F;
+	color: #00AF2F;
+}
+#fileupload #filestatus.rejected {
+	background-color: #FF9899;
+	color: #AF4849;
+}
+#fileupload #filestatus.warning {
+	background-color: #E8F48C;
+	color: #98A43C;
+}
+#fileupload #filestatus .status-icon {
+	display: none;
+}
+#fileupload #filestatus.loading .status-icon.loading-icon,
+#fileupload #filestatus.accepted .status-icon.accepted-icon,
+#fileupload #filestatus.rejected .status-icon.rejected-icon,
+#fileupload #filestatus.warning .status-icon.warning-icon {
+	display: inline-block;
+}
+#fileupload input[type='file'] {
+	opacity: 0;
+	position: absolute;
+	top: -100%;
+	left: 0;
+	width: 100%;
+	height: 200%;
+	font-size: 0;
+	cursor: pointer;
+}
+
+
+/*
+ *	Tree view section styles
+ */
+#treeview details {
+	padding-left: 1em;
+}
+#treeview details > summary {
+	margin-left: -1em;
+	list-style: none;
+	cursor: pointer;
+}
+/* Chrome doesn't support list-style on summary elements yet */
+#treeview details > summary::-webkit-details-marker {
+	display: none;
+}
+#treeview details > summary::before {
+	content: '+';
+	margin-right: 0.5em;
+}
+#treeview details[open] > summary::before {
+	font-family: 'Courier New', monospace;
+	content: '-';
+}
+#treeview details > div {
+	cursor: pointer;
+}
+#treeview details > div::before {
+	font-family: 'Courier New', monospace;
+	content: '-';
+	margin-right: 0.5em;
+}
+#treeview details > summary.inspecting,
+#treeview details > div.inspecting {
+	background-color: #DFDFDF;
+}
+#treeview details > summary.inspecting::after,
+#treeview details > div.inspecting::after {
+	font-family: 'Courier New', monospace;
+	content: '->';
+	float: right;
+	margin-right: 15px;
+}
+
+
+/*
+ *	Inspector section styles
+ */
+#inspector table.expr-list {
+	border: none;
+	margin: 1em 20px;
+}
+#inspector table.expr-list tr td:nth-of-type(2) {
+	padding-left: 0.5em;
+	padding-right: 0.5em;
+}
+#inspector table.expr-list .bullet::before {
+	content: '•';
+	font-size: 1.3em;
+	margin-right: 0.5em;
+	vertical-align: middle;
+}
+#inspector .lval::before,
+#inspector .rval::before {
+	background-color: #E0E0E0;
+	font-size: 80%;
+	margin-right: 0.5em;
+	vertical-align: text-bottom;
+	padding: 0 2px;
+}
+#inspector .expr-value-invalid::after {
+	background-color: #E8F48C;
+	color: #98A43C;
+	font-size: 80%;
+	margin-left: 0.5em;
+	vertical-align: text-bottom;
+	padding: 0 2px;
+	content: '(value invalid)';
+}
+#inspector .expr-type-unset {
+	color: #AF4849;
+}
+#inspector .expr-type-unset::before {
+	content: 'unset:';
+}
+#inspector .expr-type-dict {
+	color: #F0A000;
+}
+#inspector .expr-type-dict::before {
+	content: 'dict:';
+}
+#inspector .expr-type-dictesc {
+	color: #98A43C;
+}
+#inspector .expr-type-dictesc::before {
+	content: 'dictesc:';
+}
+#inspector .expr-type-table {}
+#inspector .expr-type-table::before {
+	content: 'edict:';
+}
+#inspector .expr-type-player {
+	color: #A0F000;
+}
+#inspector .expr-type-player::before {
+	content: 'ply:';
+}
+#inspector .expr-type-angle {
+	color: #F00F00;
+}
+#inspector .expr-type-angle::before {
+	content: 'ang:';
+}
+#inspector .expr-type-vector {
+	color: #F000F0;
+}
+#inspector .expr-type-vector::before {
+	content: 'vec:';
+}
+#inspector .expr-type-boolean {
+	color: #0000FF;
+}
+#inspector .expr-type-boolean::before {
+	content: 'bool:';
+}
+#inspector .expr-type-string {
+	color: #0A64C0;
+}
+#inspector .expr-type-string::before {
+	content: 'str:';
+}
+#inspector .expr-type-number {
+	color: #00AF2F;
+}
+#inspector .expr-type-number::before {
+	content: 'num:';
 }
