@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "build": "webpack --config webpack.config.js"
+    "build": "webpack --config webpack.config.js",
+    "release": "npm run build && git add -f dist && git commit -m \"Update build\""
   },
   "author": "",
   "license": "ISC",
