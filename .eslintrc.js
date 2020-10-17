@@ -24,6 +24,7 @@ module.exports = {
     "rules": {
         "@typescript-eslint/adjacent-overload-signatures": "error",
         "@typescript-eslint/array-type": "off",
+        "@typescript-eslint/ban-ts-comment": "off",
         "@typescript-eslint/ban-types": [
             "error",
             {
@@ -57,6 +58,7 @@ module.exports = {
                 "accessibility": "explicit"
             }
         ],
+        "@typescript-eslint/explicit-module-boundary-types": "off",
         "@typescript-eslint/member-ordering": "error",
         "@typescript-eslint/naming-convention": "off",
         "@typescript-eslint/no-empty-function": "off",
@@ -72,6 +74,9 @@ module.exports = {
         "@typescript-eslint/no-namespace": "error",
         "@typescript-eslint/no-non-null-assertion": "error",
         "@typescript-eslint/no-parameter-properties": "off",
+        "@typescript-eslint/no-shadow": "error",
+        "@typescript-eslint/no-unsafe-call": "off",
+        "@typescript-eslint/no-unsafe-member-access": "off",
         "@typescript-eslint/no-unused-expressions": [
             "warn",
             {
@@ -85,10 +90,12 @@ module.exports = {
         "@typescript-eslint/prefer-for-of": "error",
         "@typescript-eslint/prefer-function-type": "error",
         "@typescript-eslint/prefer-namespace-keyword": "error",
+        "@typescript-eslint/prefer-regexp-exec": "off",
         "@typescript-eslint/quotes": [
             "error",
             "single"
         ],
+        "@typescript-eslint/restrict-plus-operands": "off",
         "@typescript-eslint/triple-slash-reference": [
             "error",
             {
@@ -140,18 +147,7 @@ module.exports = {
         "no-bitwise": "error",
         "no-caller": "error",
         "no-cond-assign": "error",
-        "no-console": [
-            "error",
-            {
-                "allow": [
-                    "debug",
-                    "info",
-                    "time",
-                    "timeEnd",
-                    "trace"
-                ]
-            }
-        ],
+        "no-console": "off",
         "no-debugger": "error",
         "no-empty": "off",
         "no-eval": "error",
@@ -163,12 +159,7 @@ module.exports = {
             "error",
             "rxjs/Rx"
         ],
-        "no-shadow": [
-            "error",
-            {
-                "hoist": "all"
-            }
-        ],
+        "no-shadow": "off",     // Using @typescript-eslint/no-shadow instead
         "no-throw-literal": "error",
         "no-trailing-spaces": "error",
         "no-undef-init": "error",
