@@ -1,9 +1,11 @@
 import { ExpressionType } from './data-models/expression-type'
 import { StringEncoderService } from './services/string-encoder.service';
 import { EdictCollectionComponent } from './components/edict-collection.component';
+import { Edict } from './data-models/edict';
+import { DataSectionCollection } from './data-models/data-section-collection';
 
 export class AppComponent {
-    private fileStatusMsg = {accepted: 'Ready to inspect', rejected: 'Parsing error', warning: 'Optimizations possible'};
+    private fileStatusMsg = {accepted: 'Ready to inspect', rejected: 'Parsing error', warning: 'Optimizations possible', loading: ''};
 
     constructor() {
         // Run our setup routines when the document finishes loading
@@ -16,72 +18,82 @@ export class AppComponent {
             .on('dragover', (event) => { this.handleFileDragOver(event); });
     }
 
-    loadFile(fileList)
+    loadFile(fileList: FileList)
     {
         // User selected no file
-        if (fileList.length == 0) return;
+        if (fileList.length === 0) return;
 
-        const file = fileList[0];
-        if (file.type != 'text/plain'){ updateFileStatus('rejected', file.name+' is not a plaintext file (*.txt)'); return; }
+        const file: File = fileList[0];
+        if (file.type !== 'text/plain'){ this.updateFileStatus('rejected', file.name+' is not a plaintext file (*.txt)'); return; }
 
         const reader = new FileReader();
 
-        reader.onload = (res) => { parseData(file.name, res.target.result); };
-        reader.onerror = (res) => { updateFileStatus('rejected', 'The file reader returned error code '+res.target.error.code+'. Please check the file and try again.'); };
+        reader.onload = (res) => {
+            if (!(res.target instanceof FileReader) || typeof res.target.result !== 'string')
+            {
+                this.updateFileStatus('rejected', 'The file could not be loaded as a file reader. Please check the file and try again.');
+            }
+            else this.parseData(file.name, res.target.result);
+        };
+        reader.onerror = (res) => {
+            if (!(res.target instanceof FileReader) || !(res.target.error instanceof DOMException))
+            {
+                this.updateFileStatus('rejected', 'The file reader returned an unknown error. Please check the file and try again.');
+            }
+            else this.updateFileStatus('rejected', 'The file reader returned error code ' + res.target.error.code + '. '
+                + 'Please check the file and try again.');
+        };
 
-        updateFileStatus('loading', '');
+        this.updateFileStatus('loading', '');
         reader.readAsText(file);
     }
 
-    parseData(filename, data)
+    parseData(filename: string, data: string)
     {
         // Standardize newlines and remove empty lines in case the user manually edited the file
         data = data.replace(/\r+\n/g, '\n').replace(/\n\s*\n/g, '\n');
 
-        let parseWarnings = [];
-        const dataSections = {};
-        const expectedDataSections = ['Info', 'More Information', 'Save', 'Dict'];
+        let parseWarnings: string[] = [];
+        const dataSections = new DataSectionCollection();
 
         // Split the data by sections and populate the dataSections object
         const splits = data.split(/\n?^\[(.*)\]$\n?/gm);
         if (splits[0].length > 0) parseWarnings.push('Data found before first section');
-        for (var i = 1; i < splits.length; i+=2)
+        for (let i = 1; i < splits.length; i+=2)
         {
             // Each section becomes a property of the dataSections object, whose value is an array of strings delimited by newlines
-            if (dataSections[splits[i]] !== undefined) parseWarnings.push('Section "'+splits[i]+'" was defined multiple times');
-            else if (expectedDataSections.indexOf(splits[i]) < 0) parseWarnings.push('Unrecognized section "'+splits[i]+'"');
-            dataSections[splits[i]] = splits[i+1].split('\n');
+            const sectionName = splits[i];
+            const sectionContents = splits[i+1];
+
+            if (dataSections.isSectionSet(sectionName)) parseWarnings.push('Section "'+sectionName+'" was defined multiple times');
+            else if (!dataSections.isSectionExpected(sectionName)) parseWarnings.push('Unrecognized section "'+sectionName+'"');
+
+            const sectionSaveResult = dataSections.setSection(sectionName, sectionContents);
+            sectionSaveResult.warnings.forEach((v) => parseWarnings.push('Section "'+sectionName+'" '+v));
         }
 
         // Check for expected data sections
-        for (var i = 0; i < expectedDataSections.length; i++)
+        for (const expectedSection of dataSections.getExpectedSections())
         {
-            if (dataSections[expectedDataSections[i]] === undefined)
+            if (dataSections.isSectionSet(expectedSection) === undefined)
             {
-                updateFileStatus('rejected', 'Section "'+expectedDataSections[i]+'" missing');
+                this.updateFileStatus('rejected', 'Section "'+expectedSection+'" missing');
                 return;
             }
         }
 
-        // Convert data section values from arrays of strings into key-value pairs
-        expectedDataSections.forEach((section) => {
-            const kvs = stringArrayToKV(dataSections[section]);
-            dataSections[section] = kvs.result;
-            kvs.warnings.forEach((v) => parseWarnings.push('Section "'+section+'" '+v));
-        });
-
         console.log('parsed data sections: ', dataSections);
 
-        if (dataSections.Save.Entities === undefined){ updateFileStatus('rejected', 'Section "Save" missing entities'); return; }
-        if (dataSections.Save.Constraints === undefined){ updateFileStatus('rejected', 'Section "Save" missing constraints'); return; }
-
-        // Break edicts into string arrays for parsing
-        let edictResult = edictStringToStringArray(dataSections.Save.Entities);
-        dataSections.Save.Entities = edictResult.result;
-        edictResult.warnings.forEach((v) => parseWarnings.push('Entities '+v));
-        edictResult = edictStringToStringArray(dataSections.Save.Constraints);
-        dataSections.Save.Constraints = edictResult.result;
-        edictResult.warnings.forEach((v) => parseWarnings.push('Constraints '+v));
+        if (dataSections.Save.Entities === undefined)
+        {
+            this.updateFileStatus('rejected', 'Section "Save" missing entities');
+            return;
+        }
+        if (dataSections.Save.Constraints === undefined)
+        {
+            this.updateFileStatus('rejected', 'Section "Save" missing constraints');
+            return;
+        }
 
         // Parse edicts
         const edictCollection = new EdictCollectionComponent();
@@ -96,47 +108,18 @@ export class AppComponent {
         // Edict value validation
         edictCollection.validateEdicts(dataSections.Dict);
 
-        renderTreeView(filename, edictCollection);
-        setupDetailsView(filename, dataSections, edictCollection);
+        this.renderTreeView(filename, edictCollection);
+        this.setupDetailsView(filename, dataSections, edictCollection);
         $('#treeview > details summary.fileitem').click();
 
-        if (parseWarnings.length > 0) updateFileStatus('warning', parseWarnings.map(x => StringEncoderService.encodeHTML(x)).join('<br>'));
-        else updateFileStatus('accepted', '');
+        if (parseWarnings.length > 0)
+        {
+            this.updateFileStatus('warning', parseWarnings.map(x => StringEncoderService.encodeHTML(x)).join('<br>'));
+        }
+        else this.updateFileStatus('accepted', '');
     }
 
-    // Takes an array of strings formatted as "key:value", and returns an object{result, warnings[]}. Object.result has properties named after keys holding values without surrounding quotes
-    stringArrayToKV(arr)
-    {
-        const result = {result:{}, warnings:[]};
-        arr.forEach((str) => {
-            let splitIdx = str.indexOf(':');
-            if (splitIdx < 0 || splitIdx == str.length-1){ result.warnings.push('Key "'+str+'" has no value'); splitIdx = (splitIdx<0?str.length:splitIdx); }
-            else if (splitIdx == 0) result.warnings.push('Value "'+str+'" has no key');
-
-            const key = str.slice(0, splitIdx);
-            const val = str.slice(splitIdx+1);
-            if (result.result[key] !== undefined) result.warnings.push('Key "'+key+'" was defined multiple times');
-            result.result[key] = val.replace(/(^\")|(\"$)/g, '');
-        });
-        return result;
-    }
-
-    // Takes a string formatted as "A{type:value;...;}B{type:value;...;}", and returns an object{result[], warnings[]}. Object.result is an array of strings formatted as ["A{type:value;...;}", "B{type:value;...;}"]
-    edictStringToStringArray(str)
-    {
-        const result = {result:[], warnings:[]};
-        result.result = str.match(/.+?{.*?}/g);
-        if (result.result == null){ result.result = [str]; result.warnings.push('Edict string contained no edicts'); }
-
-        // Include a parse warning if we didn't match the entire string
-        let totalLength = 0;
-        result.result.forEach((v) => totalLength+=v.length);
-        if (totalLength < str.length) result.warnings.push('Edict string contained some junk data, which we removed');
-
-        return result;
-    }
-
-    renderTreeView(filename, edictCollection)
+    renderTreeView(filename: string, edictCollection: EdictCollectionComponent)
     {
         const treeview = $('#treeview > details');
         treeview.empty();
@@ -161,8 +144,8 @@ export class AppComponent {
 
         // Build the associative tree
         const assocTree = $('<details class="topnode assocview"><summary>Associative View</summary></details>');
-        assocTree.append(buildEdictTree(edictCollection, edictCollection.getHeadEntity()));
-        assocTree.append(buildEdictTree(edictCollection, edictCollection.getHeadConstraint()));
+        assocTree.append(this.buildEdictTree(edictCollection, edictCollection.getHeadEntity()));
+        assocTree.append(this.buildEdictTree(edictCollection, edictCollection.getHeadConstraint()));
 
         // Add the trees and lists to the view
         treeview.append(entList);
@@ -170,30 +153,47 @@ export class AppComponent {
         treeview.append(assocTree);
 
         // Bind to inspectable element click events
-        treeview.find('.inspectable').click(function(event){ event.stopPropagation(); event.preventDefault(); updateInspectionTarget($(this), true); });
+        treeview.find('.inspectable').click((event) => {
+            event.stopPropagation();
+            event.preventDefault();
+            this.updateInspectionTarget($(this), true);
+        });
     }
 
     // Recursively builds an associative tree view from the given edict
-    buildEdictTree(edictCollection, currentEdict)
+    buildEdictTree(edictCollection: EdictCollectionComponent, currentEdict: Edict | undefined)
     {
         if (currentEdict === undefined) return $('<div>(undefined edict)</div>');
 
         let label = currentEdict.getID();
-        if (currentEdict == edictCollection.getHeadEntity()) label += ' (head entity)';
-        else if (currentEdict == edictCollection.getHeadConstraint()) label += ' (head constraint)';
+        if (currentEdict === edictCollection.getHeadEntity()) label += ' (head entity)';
+        else if (currentEdict === edictCollection.getHeadConstraint()) label += ' (head constraint)';
 
-        const children = [];
+        const children: JQuery[] = [];
         currentEdict.getExpressions().forEach((expr) => {
-            if (expr.getLeftType() == ExpressionType.table) children.push(buildEdictTree(edictCollection, edictCollection.getEdict(expr.getLeftValue())));
-            if (expr.getRightType() == ExpressionType.table) children.push(buildEdictTree(edictCollection, edictCollection.getEdict(expr.getRightValue())));
+            if (expr.getLeftType() === ExpressionType.table)
+            {
+                children.push(this.buildEdictTree(edictCollection, edictCollection.getEdict(expr.getLeftValue())));
+            }
+            if (expr.getRightType() === ExpressionType.table)
+            {
+                children.push(this.buildEdictTree(edictCollection, edictCollection.getEdict(expr.getRightValue())));
+            }
         });
 
-        let displayItem;
-        if (children.length == 0) displayItem = $('<div class="inspectable associative"></div>').text(label).attr('data-edictid', currentEdict.getID());
+        let displayItem: JQuery;
+        if (children.length === 0)
+        {
+            displayItem = $('<div class="inspectable associative"></div>')
+                .text(label)
+                .attr('data-edictid', currentEdict.getID());
+        }
         else
         {
             displayItem = $('<details></details>');
-            displayItem.append($('<summary class="inspectable associative"></summary>').text(label).attr('data-edictid', currentEdict.getID()));
+            displayItem.append($('<summary class="inspectable associative"></summary>')
+                .text(label)
+                .attr('data-edictid', currentEdict.getID()));
             children.forEach((child) => displayItem.append(child));
         }
 
@@ -201,7 +201,7 @@ export class AppComponent {
     }
 
     // Set the details view data contexts for access when we try to render
-    setupDetailsView(filename, dataSections, edictCollection)
+    setupDetailsView(filename: string, dataSections: DataSectionCollection, edictCollection: EdictCollectionComponent)
     {
         $('#inspector')
             .data('filename', filename)
@@ -215,8 +215,8 @@ export class AppComponent {
         detailsview.empty();
         detailsview.append($('<h2></h2>').text(detailsview.data('filename')));
 
-        let infosection;
-        let infolist;
+        let infosection: JQuery;
+        let infolist: JQuery;
         infosection = $('<div><b>Info:</b><ul></ul></div>');
         infolist = infosection.find('ul');
         Object.entries(detailsview.data('datasections').Info).forEach(([key, val]) => {
@@ -239,13 +239,14 @@ export class AppComponent {
         detailsview.append(infosection);
     }
 
-    // Shows the details view for the given edict. The isAssociative parameter is a boolean value to control the resulting view's
-    //  handling of child edicts -- true will create links to the edict in the associative tree, false will create links to the edict in the list view
-    showEdictDetails(edictID, isAssociative)
+    // Shows the details view for the given edict. The isAssociative parameter is a boolean value to control the
+    //  resulting view's handling of child edicts -- true will create links to the edict in the associative tree,
+    //  false will create links to the edict in the list view
+    showEdictDetails(edictID: string, isAssociative: boolean)
     {
         const detailsview = $('#inspector');
-        const dictionary = detailsview.data('datasections').Dict;
-        const edictCollection = detailsview.data('edictcollection');
+        const dictionary: Record<string, string> = detailsview.data('datasections').Dict as Record<string, string>;
+        const edictCollection: EdictCollectionComponent = detailsview.data('edictcollection') as EdictCollectionComponent;
         const thisEdict = edictCollection.getEdict(edictID);
 
         detailsview.empty();
@@ -255,8 +256,8 @@ export class AppComponent {
         else header.text(header.text()+' ('+(thisEdict.isEntity()?'Entity':'Constraint')+')');
 
         // Shortcut function for formatting the expression values in the loop. Returns an object{classes[], formattedValue}
-        const formatExprVal = (exprType, origValue) => {
-            const result = {classes:[], formattedValue:''};
+        const formatExprVal = (exprType: number, origValue: string) => {
+            const result = {classes:[] as string[], formattedValue:''};
 
             const isValid = ExpressionType.validators[exprType].test(origValue);
 
@@ -265,7 +266,7 @@ export class AppComponent {
                 result.classes.push('expr-value-invalid');
                 result.formattedValue = StringEncoderService.encodeHTML(origValue);
             }
-            else if (exprType == ExpressionType.dictionary || exprType == ExpressionType.dictionaryEscaped)
+            else if (exprType === ExpressionType.dictionary || exprType === ExpressionType.dictionaryEscaped)
             {
                 if (dictionary[origValue] === undefined)
                 {
@@ -274,7 +275,7 @@ export class AppComponent {
                 }
                 else result.formattedValue = StringEncoderService.encodeHTML(dictionary[origValue]);
             }
-            else if (exprType == ExpressionType.table)
+            else if (exprType === ExpressionType.table)
             {
                 if (edictCollection.getEdict(origValue) === undefined)
                 {
@@ -284,17 +285,18 @@ export class AppComponent {
                 else
                 {
                     const edictParam = origValue.replace(/'|\\/g, '\\$&');
-                    result.formattedValue = '<a href="#" onclick="updateInspectionEdict(\''+edictParam+'\', '+isAssociative+')">'+StringEncoderService.encodeHTML(origValue)+'</a>';
+                    result.formattedValue = '<a href="#" onclick="updateInspectionEdict(\'' + edictParam + '\', ' + isAssociative + ')">' +
+                        StringEncoderService.encodeHTML(origValue) + '</a>';
                 }
             }
-            else if (exprType == ExpressionType.angle || exprType == ExpressionType.vector)
+            else if (exprType === ExpressionType.angle || exprType === ExpressionType.vector)
             {
-                const parts = origValue.match(ExpressionType.validators[exprType]);
+                const parts = origValue.match(ExpressionType.validators[exprType]) ?? [];
                 result.formattedValue = '(' + parts[1] + ', ' + parts[2] + ', ' + parts[3] + ')';
             }
-            else if (exprType == ExpressionType.tBoolean)
+            else if (exprType === ExpressionType.tBoolean)
             {
-                result.formattedValue = (origValue=='t'?'TRUE':'FALSE');
+                result.formattedValue = (origValue==='t'?'TRUE':'FALSE');
             }
             else	// Everything else including string, player, and number values
             {
@@ -304,9 +306,10 @@ export class AppComponent {
             return result;
         };
 
-        let infosection = $('<div><b>Expressions:</b><table class="expr-list"></table></div>');
-        let infolist = infosection.find('table');
-        let exprelem = $('<tr><td><i class="bullet"></i><span class="lval"></span></td><td>=</td><td><span class="rval"></span></td></tr>');
+        const infosection: JQuery = $('<div><b>Expressions:</b><table class="expr-list"></table></div>');
+        const infolist: JQuery = infosection.find('table');
+        const exprelem: JQuery = $('<tr><td><i class="bullet"></i><span class="lval"></span></td>' +
+            '<td>=</td><td><span class="rval"></span></td></tr>');
         thisEdict.getExpressions().forEach((expr) => {
             const thisElem = exprelem.clone();
             const leftFormatted = formatExprVal(expr.getLeftType(), expr.getLeftValue());
@@ -327,14 +330,14 @@ export class AppComponent {
         detailsview.append(infosection);
     }
 
-    updateInspectionTarget(target, isClickEvent)
+    updateInspectionTarget(target: JQuery<any>, isClickEvent = false)
     {
-        const collapseTarget = (isClickEvent && target.is('summary.inspecting') && target.closest('details').prop('open'));
+        const collapseTarget: boolean = (isClickEvent && target.is('summary.inspecting') && !!target.closest('details').prop('open'));
 
         $('#treeview > details .inspecting').removeClass('inspecting');
         target.addClass('inspecting');
-        if (target.hasClass('fileitem')) showFileDetails();
-        else showEdictDetails(target.data('edictid'), target.hasClass('associative'));
+        if (target.hasClass('fileitem')) this.showFileDetails();
+        else this.showEdictDetails(target.data('edictid'), target.hasClass('associative'));
 
         // Open any parent trees to the target
         target.parentsUntil('#treeview', 'details').prop('open', true);
@@ -343,26 +346,30 @@ export class AppComponent {
         if (collapseTarget) target.closest('details').prop('open', false);
 
         // Scroll the tree view to show the target
-        const viewCeiling = $('#treeview').scrollTop();
-        const viewFloor = viewCeiling + $('#treeview').height();
+        const treeView: JQuery = $('#treeview');
+        const viewCeiling = treeView.scrollTop() as number;
+        const viewFloor = viewCeiling + (treeView.height() as number);
         const targetCeiling = target.position().top;
-        const targetFloor = target.position().top + target.height();
-        if (targetCeiling < viewCeiling) $('#treeview').scrollTop(targetCeiling);
-        else if (targetFloor > viewFloor) $('#treeview').scrollTop(targetFloor-$('#treeview').height());
+        const targetFloor = target.position().top + (target.height() as number);
+        if (targetCeiling < viewCeiling) treeView.scrollTop(targetCeiling);
+        else if (targetFloor > viewFloor) treeView.scrollTop(targetFloor - (treeView.height() as number));
     }
 
-    updateInspectionEdict(edictID, isAssociative)
+    updateInspectionEdict(edictID: string, isAssociative: boolean)
     {
         let targetElem = null;
         if (isAssociative)
         {
             const inspected = $('#treeview > details .inspecting');
-            var foundelem = inspected.closest('details').find('.inspectable[data-edictid="'+edictID+'"]');
-            if (foundelem.length == 0)
+            let foundelem = inspected.closest('details').find('.inspectable[data-edictid="'+edictID+'"]');
+            if (foundelem.length === 0)
             {
                 const ancestors = inspected.parentsUntil('#treeview', 'details');
                 let parentIndex = 0;
-                while (foundelem.length == 0 && parentIndex < ancestors.length) foundelem = ancestors.eq(parentIndex++).find('.inspectable[data-edictid="'+edictID+'"]');
+                while (foundelem.length === 0 && parentIndex < ancestors.length)
+                {
+                    foundelem = ancestors.eq(parentIndex++).find('.inspectable[data-edictid="'+edictID+'"]');
+                }
             }
 
             if (foundelem.length > 0) targetElem = foundelem.first();
@@ -376,35 +383,36 @@ export class AppComponent {
         if (targetElem == null) return false;
         else
         {
-            updateInspectionTarget(targetElem);
+            this.updateInspectionTarget(targetElem);
             return true;
         }
     }
 
-    updateFileStatus(status, details)
+    updateFileStatus(status: 'accepted'|'rejected'|'warning'|'loading', details: any)
     {
         $('#filestatus').removeClass().addClass(status);
-        $('#filestatus .label').text(fileStatusMsg[status]!==undefined?fileStatusMsg[status]:'');
+        $('#filestatus .label').text(this.fileStatusMsg[status]);
         // TODO: Show details in UI
         console.log('file status updated to '+status+':', details);
     }
 
-    handleFileSelect(event)
+    handleFileSelect(event: JQuery.ChangeEvent)
     {
-        loadFile(event.originalEvent.target.files);
+        // @ts-ignore: The files property DOES exist on this event
+        this.loadFile(event.originalEvent?.target?.files ?? new FileList());
     }
 
-    handleFileDrop(event)
+    handleFileDrop(event: JQuery.DropEvent)
     {
         event.stopPropagation();
         event.preventDefault();
-        loadFile(event.originalEvent.dataTransfer.files);
+        this.loadFile(event.originalEvent?.dataTransfer?.files ?? new FileList());
     }
 
-    handleFileDragOver(event)
+    handleFileDragOver(event: JQuery.DragOverEvent)
     {
         event.stopPropagation();
         event.preventDefault();
-        event.originalEvent.dataTransfer.dropEffect = 'copy';
+        if (event.originalEvent?.dataTransfer?.dropEffect) event.originalEvent.dataTransfer.dropEffect = 'copy';
     }
 }
