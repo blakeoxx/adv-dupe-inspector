@@ -1,3 +1,4 @@
 import './style.css';
+import { AppComponent } from './app/app.component';
 
-import './app/main.js';
+new AppComponent();
