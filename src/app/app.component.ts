@@ -156,7 +156,7 @@ export class AppComponent {
         treeview.find('.inspectable').click((event) => {
             event.stopPropagation();
             event.preventDefault();
-            this.updateInspectionTarget($(this), true);
+            this.updateInspectionTarget($(event.target), true);
         });
     }
 
