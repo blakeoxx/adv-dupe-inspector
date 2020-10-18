@@ -38,7 +38,7 @@ export class EdictExpression
     // Checks left and right values for type sanity. Returns true if values match their type's range
     isValid()
     {
-        return (ExpressionType.validators[this.typeLeft].test(this.valueLeft)
-            && ExpressionType.validators[this.typeRight].test(this.valueRight));
+        return (ExpressionType.validatorFor(this.typeLeft).test(this.valueLeft)
+            && ExpressionType.validatorFor(this.typeRight).test(this.valueRight));
     }
 }

@@ -1,102 +1,116 @@
+enum ExpressionTypeType {
+    UNSET,
+    DICTIONARY,
+    DICTIONARY_ESCAPED,
+    TABLE,
+    PLAYER,
+    ANGLE,
+    VECTOR,
+    BOOLEAN,
+    STRING,
+    NUMBER
+}
+
 export class ExpressionType {
+    public static readonly TYPES = ExpressionTypeType;
     public static readonly unset = 0;
-    public static readonly dictionary = 1;
-    public static readonly dictionaryEscaped = 2;
-    public static readonly table = 3;
-    public static readonly player = 4;
-    public static readonly angle = 5;
-    public static readonly vector = 6;
-    public static readonly tBoolean = 7;
-    public static readonly tString = 8;
-    public static readonly tNumber = 9;
 
-    public static readonly validators: RegExp[] = [
-        /^.*$/,				// unset
-        /^.+$/,				// dictionary
-        /^.+$/,				// dictionaryEscaped
-        /^.+$/,				// table
-        /^\d+$/,			// player
-        /^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/,		// angle
-        /^(-?\d+(?:\.\d+)?(?:e-\d+)?),(-?\d+(?:\.\d+)?(?:e-\d+)?),(-?\d+(?:\.\d+)?(?:e-\d+)?)$/,		// vector
-        /^t|f$/,			// boolean
-        /^"[^"]*"$/,		// string
-        /^-?\d+(\.\d+)?$/	// number
-    ];
-
-    public static readonly cssPrefix = 'expr-type-';
-
-    static charToEnum(chr: string): number {
+    static charToEnum(chr: string): ExpressionTypeType {
         switch (chr.toUpperCase()) {
             case 'Y':
-                return this.dictionary;
+                return ExpressionTypeType.DICTIONARY;
             case 'Z':
-                return this.dictionaryEscaped;
+                return ExpressionTypeType.DICTIONARY_ESCAPED;
             case 'T':
-                return this.table;
+                return ExpressionTypeType.TABLE;
             case 'P':
-                return this.player;
+                return ExpressionTypeType.PLAYER;
             case 'A':
-                return this.angle;
+                return ExpressionTypeType.ANGLE;
             case 'V':
-                return this.vector;
+                return ExpressionTypeType.VECTOR;
             case 'B':
-                return this.tBoolean;
+                return ExpressionTypeType.BOOLEAN;
             case 'S':
-                return this.tString;
+                return ExpressionTypeType.STRING;
             case 'N':
-                return this.tNumber;
+                return ExpressionTypeType.NUMBER;
             default:
-                return this.unset;
+                return ExpressionTypeType.UNSET;
         }
     }
 
-    static enumToChar(val: number): string {
+    static enumToChar(val: ExpressionTypeType): string {
         switch (val) {
-            case this.dictionary:
+            case ExpressionTypeType.DICTIONARY:
                 return 'Y';
-            case this.dictionaryEscaped:
+            case ExpressionTypeType.DICTIONARY_ESCAPED:
                 return 'Z';
-            case this.table:
+            case ExpressionTypeType.TABLE:
                 return 'T';
-            case this.player:
+            case ExpressionTypeType.PLAYER:
                 return 'P';
-            case this.angle:
+            case ExpressionTypeType.ANGLE:
                 return 'A';
-            case this.vector:
+            case ExpressionTypeType.VECTOR:
                 return 'V';
-            case this.tBoolean:
+            case ExpressionTypeType.BOOLEAN:
                 return 'B';
-            case this.tString:
+            case ExpressionTypeType.STRING:
                 return 'S';
-            case this.tNumber:
+            case ExpressionTypeType.NUMBER:
                 return 'N';
             default:
                 return '';
         }
     }
 
-    static enumToCSSClass(val: number): string {
+    static enumToCSSClass(val: ExpressionTypeType): string {
+        const cssPrefix = 'expr-type-';
         switch (val) {
-            case this.dictionary:
-                return this.cssPrefix + 'dict';
-            case this.dictionaryEscaped:
-                return this.cssPrefix + 'dictesc';
-            case this.table:
-                return this.cssPrefix + 'table';
-            case this.player:
-                return this.cssPrefix + 'player';
-            case this.angle:
-                return this.cssPrefix + 'angle';
-            case this.vector:
-                return this.cssPrefix + 'vector';
-            case this.tBoolean:
-                return this.cssPrefix + 'boolean';
-            case this.tString:
-                return this.cssPrefix + 'string';
-            case this.tNumber:
-                return this.cssPrefix + 'number';
+            case ExpressionTypeType.DICTIONARY:
+                return cssPrefix + 'dict';
+            case ExpressionTypeType.DICTIONARY_ESCAPED:
+                return cssPrefix + 'dictesc';
+            case ExpressionTypeType.TABLE:
+                return cssPrefix + 'table';
+            case ExpressionTypeType.PLAYER:
+                return cssPrefix + 'player';
+            case ExpressionTypeType.ANGLE:
+                return cssPrefix + 'angle';
+            case ExpressionTypeType.VECTOR:
+                return cssPrefix + 'vector';
+            case ExpressionTypeType.BOOLEAN:
+                return cssPrefix + 'boolean';
+            case ExpressionTypeType.STRING:
+                return cssPrefix + 'string';
+            case ExpressionTypeType.NUMBER:
+                return cssPrefix + 'number';
             default:
-                return this.cssPrefix + 'unset';
+                return cssPrefix + 'unset';
+        }
+    }
+
+    static validatorFor(val: ExpressionTypeType): RegExp {
+        switch (val) {
+            case ExpressionTypeType.DICTIONARY:
+            case ExpressionTypeType.DICTIONARY_ESCAPED:
+            case ExpressionTypeType.TABLE:
+                return /^.+$/;
+            case ExpressionTypeType.PLAYER:
+                return /^\d+$/;
+            case ExpressionTypeType.ANGLE:
+                return /^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/;
+            case ExpressionTypeType.VECTOR:
+                return /^(-?\d+(?:\.\d+)?(?:e-\d+)?),(-?\d+(?:\.\d+)?(?:e-\d+)?),(-?\d+(?:\.\d+)?(?:e-\d+)?)$/;
+            case ExpressionTypeType.BOOLEAN:
+                return /^t|f$/;
+            case ExpressionTypeType.STRING:
+                return /^"[^"]*"$/;
+            case ExpressionTypeType.NUMBER:
+                return /^-?\d+(\.\d+)?$/;
+            default:
+                return /^.*$/;
         }
     }
 }
