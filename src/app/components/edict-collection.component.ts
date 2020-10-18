@@ -71,7 +71,7 @@ export class EdictCollectionComponent
                 else
                 {
                     // Check the left value reference and count it if it's valid
-                    if (expr.getLeftType() === ExpressionType.table)
+                    if (expr.getLeftType() === ExpressionType.TYPES.TABLE)
                     {
                         if (this.getEdict(expr.getLeftValue()) === undefined)
                         {
@@ -79,7 +79,7 @@ export class EdictCollectionComponent
                         }
                         else edictCounter[expr.getLeftValue()]++;
                     }
-                    else if (expr.getLeftType() === ExpressionType.dictionary)
+                    else if (expr.getLeftType() === ExpressionType.TYPES.DICTIONARY)
                     {
                         if (dictionary[expr.getLeftValue()] === undefined)
                         {
@@ -87,7 +87,7 @@ export class EdictCollectionComponent
                         }
                         else dictCounter[expr.getLeftValue()]++;
                     }
-                    else if (expr.getLeftType() === ExpressionType.dictionaryEscaped)
+                    else if (expr.getLeftType() === ExpressionType.TYPES.DICTIONARY_ESCAPED)
                     {
                         if (dictionary[expr.getLeftValue()] === undefined)
                         {
@@ -97,7 +97,7 @@ export class EdictCollectionComponent
                     }
 
                     // Check the right value reference and count it if it's valid
-                    if (expr.getRightType() === ExpressionType.table)
+                    if (expr.getRightType() === ExpressionType.TYPES.TABLE)
                     {
                         if (this.getEdict(expr.getRightValue()) === undefined)
                         {
@@ -105,7 +105,7 @@ export class EdictCollectionComponent
                         }
                         else edictCounter[expr.getRightValue()]++;
                     }
-                    else if (expr.getRightType() === ExpressionType.dictionary)
+                    else if (expr.getRightType() === ExpressionType.TYPES.DICTIONARY)
                     {
                         if (dictionary[expr.getRightValue()] === undefined)
                         {
@@ -113,7 +113,7 @@ export class EdictCollectionComponent
                         }
                         else dictCounter[expr.getRightValue()]++;
                     }
-                    else if (expr.getRightType() === ExpressionType.dictionaryEscaped)
+                    else if (expr.getRightType() === ExpressionType.TYPES.DICTIONARY_ESCAPED)
                     {
                         if (dictionary[expr.getRightValue()] === undefined)
                         {
@@ -180,7 +180,7 @@ export class EdictCollectionComponent
             // Break the body into individual expressions
             // Returns 1 unmatched/remainder string, plus 5 entries per expression (type1, value1, type2, value2, and unmatched/remainder)
             const bodyParts = edictBody.split(/(?:(.):(.+?))(?:=(.):(.+?))?(?:;)/g);
-            const defaultExprParts = [ExpressionType.unset, '', ExpressionType.unset, ''];
+            const defaultExprParts = [ExpressionType.TYPES.UNSET, '', ExpressionType.TYPES.UNSET, ''];
             if (edictBody === ';')
             {
                 result.warnings.push('Edict '+edictID+' has no expressions. Is the edict necessary?');
@@ -198,28 +198,28 @@ export class EdictCollectionComponent
                 {
                     // Add each expression to the edict
                     const exprParts = [
-                        (bodyParts[i]===undefined?ExpressionType.unset:ExpressionType.charToEnum(bodyParts[i])),		// type 1
-                        (bodyParts[i+1]===undefined?'':bodyParts[i+1]),													// value 1
-                        (bodyParts[i+2]===undefined?ExpressionType.unset:ExpressionType.charToEnum(bodyParts[i+2])),	// type 2
-                        (bodyParts[i+3]===undefined?'':bodyParts[i+3])													// value 2
+                        (bodyParts[i]===undefined?ExpressionType.TYPES.UNSET:ExpressionType.charToEnum(bodyParts[i])),		// type 1
+                        (bodyParts[i+1]===undefined?'':bodyParts[i+1]),													    // value 1
+                        (bodyParts[i+2]===undefined?ExpressionType.TYPES.UNSET:ExpressionType.charToEnum(bodyParts[i+2])),	// type 2
+                        (bodyParts[i+3]===undefined?'':bodyParts[i+3])													    // value 2
                     ];
                     if (bodyParts[i+4].length > 0)
                     {
                         result.warnings.push('Data found after edict '+edictID+' expression '+exprNum);
                     }
-                    if (exprParts[0] === ExpressionType.unset)
+                    if (exprParts[0] === ExpressionType.TYPES.UNSET)
                     {
                         result.warnings.push('Edict '+edictID+' expression '+exprNum+' left type unsupported');
                     }
-                    if (exprParts[0] === ExpressionType.dictionaryEscaped)
+                    if (exprParts[0] === ExpressionType.TYPES.DICTIONARY_ESCAPED)
                     {
                         result.warnings.push('Edict '+edictID+' expression '+exprNum+' left type deprecated');
                     }
-                    if (exprParts[2] === ExpressionType.unset)
+                    if (exprParts[2] === ExpressionType.TYPES.UNSET)
                     {
                         result.warnings.push('Edict '+edictID+' expression '+exprNum+' right type unsupported');
                     }
-                    if (exprParts[2] === ExpressionType.dictionaryEscaped)
+                    if (exprParts[2] === ExpressionType.TYPES.DICTIONARY_ESCAPED)
                     {
                         result.warnings.push('Edict '+edictID+' expression '+exprNum+' right type deprecated');
                     }

@@ -171,11 +171,11 @@ export class AppComponent {
 
         const children: JQuery[] = [];
         currentEdict.getExpressions().forEach((expr) => {
-            if (expr.getLeftType() === ExpressionType.table)
+            if (expr.getLeftType() === ExpressionType.TYPES.TABLE)
             {
                 children.push(this.buildEdictTree(edictCollection, edictCollection.getEdict(expr.getLeftValue())));
             }
-            if (expr.getRightType() === ExpressionType.table)
+            if (expr.getRightType() === ExpressionType.TYPES.TABLE)
             {
                 children.push(this.buildEdictTree(edictCollection, edictCollection.getEdict(expr.getRightValue())));
             }
@@ -259,14 +259,14 @@ export class AppComponent {
         const formatExprVal = (exprType: number, origValue: string) => {
             const result = {classes:[] as string[], formattedValue:''};
 
-            const isValid = ExpressionType.validators[exprType].test(origValue);
+            const isValid = ExpressionType.validatorFor(exprType).test(origValue);
 
             if (!isValid)
             {
                 result.classes.push('expr-value-invalid');
                 result.formattedValue = StringEncoderService.encodeHTML(origValue);
             }
-            else if (exprType === ExpressionType.dictionary || exprType === ExpressionType.dictionaryEscaped)
+            else if (exprType === ExpressionType.TYPES.DICTIONARY || exprType === ExpressionType.TYPES.DICTIONARY_ESCAPED)
             {
                 if (dictionary[origValue] === undefined)
                 {
@@ -275,7 +275,7 @@ export class AppComponent {
                 }
                 else result.formattedValue = StringEncoderService.encodeHTML(dictionary[origValue]);
             }
-            else if (exprType === ExpressionType.table)
+            else if (exprType === ExpressionType.TYPES.TABLE)
             {
                 if (edictCollection.getEdict(origValue) === undefined)
                 {
@@ -289,12 +289,12 @@ export class AppComponent {
                         StringEncoderService.encodeHTML(origValue) + '</a>';
                 }
             }
-            else if (exprType === ExpressionType.angle || exprType === ExpressionType.vector)
+            else if (exprType === ExpressionType.TYPES.ANGLE || exprType === ExpressionType.TYPES.VECTOR)
             {
-                const parts = origValue.match(ExpressionType.validators[exprType]) ?? [];
+                const parts = origValue.match(ExpressionType.validatorFor(exprType)) ?? [];
                 result.formattedValue = '(' + parts[1] + ', ' + parts[2] + ', ' + parts[3] + ')';
             }
-            else if (exprType === ExpressionType.tBoolean)
+            else if (exprType === ExpressionType.TYPES.BOOLEAN)
             {
                 result.formattedValue = (origValue==='t'?'TRUE':'FALSE');
             }

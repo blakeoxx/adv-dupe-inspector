@@ -29,14 +29,21 @@ export class DataSectionCollection
 
     isSectionSet(sectionName: string)
     {
-        if (sectionName !== 'OtherSections' && this.hasOwnProperty(sectionName))
+        if (this.isSectionExpected(sectionName))
         {
-            // @ts-ignore: We know this[sectionName] exists because we checked for it
-            return _.isEmpty(this[sectionName]);
+            if (sectionName === 'Save')
+            {
+                return !(_.isEmpty(this.Save.Entities) && _.isEmpty(this.Save.Constraints));
+            }
+            else
+            {
+                // @ts-ignore: We know this[sectionName] exists because we checked for it
+                return !_.isEmpty(this[sectionName]);
+            }
         }
         else if (this.OtherSections.hasOwnProperty(sectionName))
         {
-            return _.isEmpty(this.OtherSections[sectionName]);
+            return !_.isEmpty(this.OtherSections[sectionName]);
         }
         return false;
     }
@@ -90,14 +97,15 @@ export class DataSectionCollection
             let splitIdx = str.indexOf(':');
             if (splitIdx < 0 || splitIdx === str.length-1)
             {
-                result.warnings.push('Key "'+str+'" has no value'); splitIdx = (splitIdx<0?str.length:splitIdx);
+                result.warnings.push('Key "'+str+'" has no value');
+                splitIdx = (splitIdx<0 ? str.length : splitIdx);
             }
             else if (splitIdx === 0) result.warnings.push('Value "'+str+'" has no key');
 
             const key = str.slice(0, splitIdx);
             const val = str.slice(splitIdx+1);
             if (result.result[key] !== undefined) result.warnings.push('Key "'+key+'" was defined multiple times');
-            result.result[key] = val.replace(/(^\")|(\"$)/g, '');
+            result.result[key] = val.replace(/(^")|("$)/g, '');
         });
         return result;
     }
