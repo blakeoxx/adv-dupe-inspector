@@ -29,14 +29,21 @@ export class DataSectionCollection
 
     isSectionSet(sectionName: string)
     {
-        if (sectionName !== 'OtherSections' && this.hasOwnProperty(sectionName))
+        if (this.isSectionExpected(sectionName))
         {
-            // @ts-ignore: We know this[sectionName] exists because we checked for it
-            return _.isEmpty(this[sectionName]);
+            if (sectionName === 'Save')
+            {
+                return !(_.isEmpty(this.Save.Entities) && _.isEmpty(this.Save.Constraints));
+            }
+            else
+            {
+                // @ts-ignore: We know this[sectionName] exists because we checked for it
+                return !_.isEmpty(this[sectionName]);
+            }
         }
         else if (this.OtherSections.hasOwnProperty(sectionName))
         {
-            return _.isEmpty(this.OtherSections[sectionName]);
+            return !_.isEmpty(this.OtherSections[sectionName]);
         }
         return false;
     }
