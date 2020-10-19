@@ -167,7 +167,7 @@ export class EdictCollectionComponent
         const result = {head: undefined as (string | undefined), edicts: {} as Record<string, Edict>, warnings: [] as string[]};
 
         arr.forEach((edictstr, idx) => {
-            const splits = edictstr.split(/^(.+)(?:\{)(.+)(?:\})$/g);
+            const splits = edictstr.split(/^(.+)(?:{)(.+)(?:})$/g);
             if (splits.length < 2){ result.warnings.push('Edict string at index '+idx+' malformed'); return; }
             const edictID = splits[1];
             const edictBody = (splits[2]?splits[2]:'');
