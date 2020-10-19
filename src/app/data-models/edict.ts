@@ -41,9 +41,4 @@ export class Edict
     {
         this.expressions.push(edictExpr);
     }
-
-    addExpressionFromArray(arr: any[])
-    {
-        this.addExpression(new EdictExpression(arr[0], arr[1], arr[2], arr[3]));
-    }
 }

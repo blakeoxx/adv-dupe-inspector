@@ -1,5 +1,7 @@
 import { ExpressionType } from '../data-models/expression-type';
 import { Edict } from '../data-models/edict';
+import { ExpressionTypeService } from '../services/expression-type.service';
+import { EdictExpression } from '../data-models/edict-expression';
 
 export class EdictCollectionComponent
 {
@@ -52,7 +54,7 @@ export class EdictCollectionComponent
 
     // Takes an array of strings representing the dictionary, checks each edict's expressions for type sanity and
     //  dictionary/edict references, and returns an array of warnings
-    validateEdicts(dictionary: Record<string, unknown>)
+    validateEdicts(dictionary: Record<string, string>)
     {
         const warnings: string[] = [];
 
@@ -73,7 +75,7 @@ export class EdictCollectionComponent
                     // Check the left value reference and count it if it's valid
                     const leftType = expr.getLeftType();
                     const leftValue = expr.getLeftValue();
-                    if (leftType === ExpressionType.TYPES.TABLE)
+                    if (leftType === ExpressionType.TABLE)
                     {
                         if (this.getEdict(leftValue) === undefined)
                         {
@@ -81,8 +83,8 @@ export class EdictCollectionComponent
                         }
                         else edictCounter[leftValue]++;
                     }
-                    else if (leftType === ExpressionType.TYPES.DICTIONARY ||
-                            leftType === ExpressionType.TYPES.DICTIONARY_ESCAPED)
+                    else if (leftType === ExpressionType.DICTIONARY ||
+                            leftType === ExpressionType.DICTIONARY_ESCAPED)
                     {
                         if (dictionary[leftValue] === undefined)
                         {
@@ -94,7 +96,7 @@ export class EdictCollectionComponent
                     // Check the right value reference and count it if it's valid
                     const rightType = expr.getRightType();
                     const rightValue = expr.getRightValue();
-                    if (rightType === ExpressionType.TYPES.TABLE)
+                    if (rightType === ExpressionType.TABLE)
                     {
                         if (this.getEdict(rightValue) === undefined)
                         {
@@ -102,8 +104,8 @@ export class EdictCollectionComponent
                         }
                         else edictCounter[rightValue]++;
                     }
-                    else if (rightType === ExpressionType.TYPES.DICTIONARY ||
-                            rightType === ExpressionType.TYPES.DICTIONARY_ESCAPED)
+                    else if (rightType === ExpressionType.DICTIONARY ||
+                            rightType === ExpressionType.DICTIONARY_ESCAPED)
                     {
                         if (dictionary[rightValue] === undefined)
                         {
@@ -170,50 +172,50 @@ export class EdictCollectionComponent
             // Break the body into individual expressions
             // Returns 1 unmatched/remainder string, plus 5 entries per expression (type1, value1, type2, value2, and unmatched/remainder)
             const bodyParts = edictBody.split(/(?:(.):(.+?))(?:=(.):(.+?))?(?:;)/g);
-            const defaultExprParts = [ExpressionType.TYPES.UNSET, '', ExpressionType.TYPES.UNSET, ''];
+            const defaultExpr = new EdictExpression(ExpressionType.UNSET, '', ExpressionType.UNSET, '');
             if (edictBody === ';')
             {
                 result.warnings.push('Edict '+edictID+' has no expressions. Is the edict necessary?');
-                thisEdict.addExpressionFromArray(defaultExprParts);
+                thisEdict.addExpression(defaultExpr);
             }
             else if (bodyParts.length === 1)
             {
                 result.warnings.push('Edict '+edictID+' body missing at least 1 separator');
-                thisEdict.addExpressionFromArray(defaultExprParts);
+                thisEdict.addExpression(defaultExpr);
             }
             else
             {
                 if (bodyParts[0].length > 0) result.warnings.push('Data found before edict '+edictID+' first expression');
+                // Add each expression to the edict
                 for (let exprNum = 1, i = 1; i < bodyParts.length; exprNum++, i+=5)
                 {
-                    // Add each expression to the edict
-                    const exprParts = [
-                        (bodyParts[i]===undefined?ExpressionType.TYPES.UNSET:ExpressionType.charToEnum(bodyParts[i])),		// type 1
-                        (bodyParts[i+1]===undefined?'':bodyParts[i+1]),													    // value 1
-                        (bodyParts[i+2]===undefined?ExpressionType.TYPES.UNSET:ExpressionType.charToEnum(bodyParts[i+2])),	// type 2
-                        (bodyParts[i+3]===undefined?'':bodyParts[i+3])													    // value 2
-                    ];
+                    const thisExpr = new EdictExpression(
+                        (bodyParts[i] === undefined? ExpressionType.UNSET : ExpressionTypeService.charToEnum(bodyParts[i])),
+                        (bodyParts[i+1] === undefined? '' : bodyParts[i+1]),
+                        (bodyParts[i+2] === undefined? ExpressionType.UNSET : ExpressionTypeService.charToEnum(bodyParts[i+2])),
+                        (bodyParts[i+3] === undefined? '' : bodyParts[i+3])
+                    );
                     if (bodyParts[i+4].length > 0)
                     {
                         result.warnings.push('Data found after edict '+edictID+' expression '+exprNum);
                     }
-                    if (exprParts[0] === ExpressionType.TYPES.UNSET)
+                    if (thisExpr.getLeftType() === ExpressionType.UNSET)
                     {
                         result.warnings.push('Edict '+edictID+' expression '+exprNum+' left type unsupported');
                     }
-                    if (exprParts[0] === ExpressionType.TYPES.DICTIONARY_ESCAPED)
+                    if (thisExpr.getLeftType() === ExpressionType.DICTIONARY_ESCAPED)
                     {
                         result.warnings.push('Edict '+edictID+' expression '+exprNum+' left type deprecated');
                     }
-                    if (exprParts[2] === ExpressionType.TYPES.UNSET)
+                    if (thisExpr.getRightType() === ExpressionType.UNSET)
                     {
                         result.warnings.push('Edict '+edictID+' expression '+exprNum+' right type unsupported');
                     }
-                    if (exprParts[2] === ExpressionType.TYPES.DICTIONARY_ESCAPED)
+                    if (thisExpr.getRightType() === ExpressionType.DICTIONARY_ESCAPED)
                     {
                         result.warnings.push('Edict '+edictID+' expression '+exprNum+' right type deprecated');
                     }
-                    thisEdict.addExpressionFromArray(exprParts);
+                    thisEdict.addExpression(thisExpr);
                 }
             }
 

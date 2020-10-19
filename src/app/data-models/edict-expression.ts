@@ -1,13 +1,14 @@
+import { ExpressionTypeService } from '../services/expression-type.service';
 import { ExpressionType } from './expression-type';
 
 export class EdictExpression
 {
-    typeLeft: number;
+    typeLeft: ExpressionType;
     valueLeft: string;
-    typeRight: number;
+    typeRight: ExpressionType;
     valueRight: string;
 
-    constructor(typeLeft: number, valueLeft: string, typeRight: number, valueRight: string)
+    constructor(typeLeft: ExpressionType, valueLeft: string, typeRight: ExpressionType, valueRight: string)
     {
         this.typeLeft = typeLeft;
         this.valueLeft = valueLeft;
@@ -38,7 +39,7 @@ export class EdictExpression
     // Checks left and right values for type sanity. Returns true if values match their type's range
     isValid()
     {
-        return (ExpressionType.validatorFor(this.typeLeft).test(this.valueLeft)
-            && ExpressionType.validatorFor(this.typeRight).test(this.valueRight));
+        return (ExpressionTypeService.validatorFor(this.typeLeft).test(this.valueLeft)
+            && ExpressionTypeService.validatorFor(this.typeRight).test(this.valueRight));
     }
 }
