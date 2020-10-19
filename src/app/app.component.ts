@@ -3,6 +3,7 @@ import { StringEncoderService } from './services/string-encoder.service';
 import { EdictCollectionComponent } from './components/edict-collection.component';
 import { Edict } from './data-models/edict';
 import { DataSectionCollection } from './data-models/data-section-collection';
+import { ExpressionTypeService } from './services/expression-type.service';
 
 export class AppComponent {
     private fileStatusMsg = {accepted: 'Ready to inspect', rejected: 'Parsing error', warning: 'Optimizations possible', loading: ''};
@@ -57,7 +58,7 @@ export class AppComponent {
         const dataSections = new DataSectionCollection();
 
         // Split the data by sections and populate the dataSections object
-        const splits = data.split(/\n?^\[(.*)\]$\n?/gm);
+        const splits = data.split(/\n?^\[(.*)]$\n?/gm);
         if (splits[0].length > 0) parseWarnings.push('Data found before first section');
         for (let i = 1; i < splits.length; i+=2)
         {
@@ -110,7 +111,7 @@ export class AppComponent {
 
         this.renderTreeView(filename, edictCollection);
         this.setupDetailsView(filename, dataSections, edictCollection);
-        $('#treeview > details summary.fileitem').click();
+        $('#treeview > details summary.fileitem').trigger('click');
 
         if (parseWarnings.length > 0)
         {
@@ -153,7 +154,7 @@ export class AppComponent {
         treeview.append(assocTree);
 
         // Bind to inspectable element click events
-        treeview.find('.inspectable').click((event) => {
+        treeview.find('.inspectable').on('click', (event) => {
             event.stopPropagation();
             event.preventDefault();
             this.updateInspectionTarget($(event.target), true);
@@ -171,11 +172,11 @@ export class AppComponent {
 
         const children: JQuery[] = [];
         currentEdict.getExpressions().forEach((expr) => {
-            if (expr.getLeftType() === ExpressionType.TYPES.TABLE)
+            if (expr.getLeftType() === ExpressionType.TABLE)
             {
                 children.push(this.buildEdictTree(edictCollection, edictCollection.getEdict(expr.getLeftValue())));
             }
-            if (expr.getRightType() === ExpressionType.TYPES.TABLE)
+            if (expr.getRightType() === ExpressionType.TABLE)
             {
                 children.push(this.buildEdictTree(edictCollection, edictCollection.getEdict(expr.getRightValue())));
             }
@@ -256,17 +257,17 @@ export class AppComponent {
         else header.text(header.text()+' ('+(thisEdict.isEntity()?'Entity':'Constraint')+')');
 
         // Shortcut function for formatting the expression values in the loop. Returns an object{classes[], formattedValue}
-        const formatExprVal = (exprType: number, origValue: string) => {
+        const formatExprVal = (exprType: ExpressionType, origValue: string) => {
             const result = {classes:[] as string[], formattedValue:''};
 
-            const isValid = ExpressionType.validatorFor(exprType).test(origValue);
+            const isValid = ExpressionTypeService.validatorFor(exprType).test(origValue);
 
             if (!isValid)
             {
                 result.classes.push('expr-value-invalid');
                 result.formattedValue = StringEncoderService.encodeHTML(origValue);
             }
-            else if (exprType === ExpressionType.TYPES.DICTIONARY || exprType === ExpressionType.TYPES.DICTIONARY_ESCAPED)
+            else if (exprType === ExpressionType.DICTIONARY || exprType === ExpressionType.DICTIONARY_ESCAPED)
             {
                 if (dictionary[origValue] === undefined)
                 {
@@ -275,7 +276,7 @@ export class AppComponent {
                 }
                 else result.formattedValue = StringEncoderService.encodeHTML(dictionary[origValue]);
             }
-            else if (exprType === ExpressionType.TYPES.TABLE)
+            else if (exprType === ExpressionType.TABLE)
             {
                 if (edictCollection.getEdict(origValue) === undefined)
                 {
@@ -284,17 +285,17 @@ export class AppComponent {
                 }
                 else
                 {
-                    const edictParam = origValue.replace(/'|\\/g, '\\$&');
+                    const edictParam = origValue.replace(/['\\]/g, '\\$&');
                     result.formattedValue = '<a href="#" onclick="updateInspectionEdict(\'' + edictParam + '\', ' + isAssociative + ')">' +
                         StringEncoderService.encodeHTML(origValue) + '</a>';
                 }
             }
-            else if (exprType === ExpressionType.TYPES.ANGLE || exprType === ExpressionType.TYPES.VECTOR)
+            else if (exprType === ExpressionType.ANGLE || exprType === ExpressionType.VECTOR)
             {
-                const parts = origValue.match(ExpressionType.validatorFor(exprType)) ?? [];
+                const parts = origValue.match(ExpressionTypeService.validatorFor(exprType)) ?? [];
                 result.formattedValue = '(' + parts[1] + ', ' + parts[2] + ', ' + parts[3] + ')';
             }
-            else if (exprType === ExpressionType.TYPES.BOOLEAN)
+            else if (exprType === ExpressionType.BOOLEAN)
             {
                 result.formattedValue = (origValue==='t'?'TRUE':'FALSE');
             }
@@ -316,12 +317,12 @@ export class AppComponent {
             const rightFormatted = formatExprVal(expr.getRightType(), expr.getRightValue());
 
             thisElem.find('.lval')
-                .addClass(ExpressionType.enumToCSSClass(expr.getLeftType()))
+                .addClass(ExpressionTypeService.enumToCSSClass(expr.getLeftType()))
                 .addClass(leftFormatted.classes.join(' '))
                 .html(leftFormatted.formattedValue);
 
             thisElem.find('.rval')
-                .addClass(ExpressionType.enumToCSSClass(expr.getRightType()))
+                .addClass(ExpressionTypeService.enumToCSSClass(expr.getRightType()))
                 .addClass(rightFormatted.classes.join(' '))
                 .html(rightFormatted.formattedValue);
 
@@ -388,7 +389,7 @@ export class AppComponent {
         }
     }
 
-    updateFileStatus(status: 'accepted'|'rejected'|'warning'|'loading', details: any)
+    updateFileStatus(status: 'accepted'|'rejected'|'warning'|'loading', details: string)
     {
         $('#filestatus').removeClass().addClass(status);
         $('#filestatus .label').text(this.fileStatusMsg[status]);
