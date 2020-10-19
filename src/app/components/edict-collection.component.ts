@@ -71,55 +71,45 @@ export class EdictCollectionComponent
                 else
                 {
                     // Check the left value reference and count it if it's valid
-                    if (expr.getLeftType() === ExpressionType.TYPES.TABLE)
+                    const leftType = expr.getLeftType();
+                    const leftValue = expr.getLeftValue();
+                    if (leftType === ExpressionType.TYPES.TABLE)
                     {
-                        if (this.getEdict(expr.getLeftValue()) === undefined)
+                        if (this.getEdict(leftValue) === undefined)
                         {
                             warnings.push('Edict '+edictID+' expression '+idx+' left value references a non-existent edict');
                         }
-                        else edictCounter[expr.getLeftValue()]++;
+                        else edictCounter[leftValue]++;
                     }
-                    else if (expr.getLeftType() === ExpressionType.TYPES.DICTIONARY)
+                    else if (leftType === ExpressionType.TYPES.DICTIONARY ||
+                            leftType === ExpressionType.TYPES.DICTIONARY_ESCAPED)
                     {
-                        if (dictionary[expr.getLeftValue()] === undefined)
+                        if (dictionary[leftValue] === undefined)
                         {
                             warnings.push('Edict '+edictID+' expression '+idx+' left value references a non-existent dictionary entry');
                         }
-                        else dictCounter[expr.getLeftValue()]++;
-                    }
-                    else if (expr.getLeftType() === ExpressionType.TYPES.DICTIONARY_ESCAPED)
-                    {
-                        if (dictionary[expr.getLeftValue()] === undefined)
-                        {
-                            warnings.push('Edict '+edictID+' expression '+idx+' left value references a non-existent dictionary entry');
-                        }
-                        else dictCounter[expr.getLeftValue()]++;
+                        else dictCounter[leftValue]++;
                     }
 
                     // Check the right value reference and count it if it's valid
-                    if (expr.getRightType() === ExpressionType.TYPES.TABLE)
+                    const rightType = expr.getRightType();
+                    const rightValue = expr.getRightValue();
+                    if (rightType === ExpressionType.TYPES.TABLE)
                     {
-                        if (this.getEdict(expr.getRightValue()) === undefined)
+                        if (this.getEdict(rightValue) === undefined)
                         {
                             warnings.push('Edict '+edictID+' expression '+idx+' right value references a non-existent edict');
                         }
-                        else edictCounter[expr.getRightValue()]++;
+                        else edictCounter[rightValue]++;
                     }
-                    else if (expr.getRightType() === ExpressionType.TYPES.DICTIONARY)
+                    else if (rightType === ExpressionType.TYPES.DICTIONARY ||
+                            rightType === ExpressionType.TYPES.DICTIONARY_ESCAPED)
                     {
-                        if (dictionary[expr.getRightValue()] === undefined)
+                        if (dictionary[rightValue] === undefined)
                         {
                             warnings.push('Edict '+edictID+' expression '+idx+' right value references a non-existent dictionary entry');
                         }
-                        else dictCounter[expr.getRightValue()]++;
-                    }
-                    else if (expr.getRightType() === ExpressionType.TYPES.DICTIONARY_ESCAPED)
-                    {
-                        if (dictionary[expr.getRightValue()] === undefined)
-                        {
-                            warnings.push('Edict '+edictID+' expression '+idx+' right value references a non-existent dictionary entry');
-                        }
-                        else dictCounter[expr.getRightValue()]++;
+                        else dictCounter[rightValue]++;
                     }
                 }
             });
