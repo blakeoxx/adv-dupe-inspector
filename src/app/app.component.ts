@@ -58,7 +58,7 @@ export class AppComponent {
         const dataSections = new DataSectionCollection();
 
         // Split the data by sections and populate the dataSections object
-        const splits = data.split(/\n?^\[(.*)\]$\n?/gm);
+        const splits = data.split(/\n?^\[(.*)]$\n?/gm);
         if (splits[0].length > 0) parseWarnings.push('Data found before first section');
         for (let i = 1; i < splits.length; i+=2)
         {
@@ -111,7 +111,7 @@ export class AppComponent {
 
         this.renderTreeView(filename, edictCollection);
         this.setupDetailsView(filename, dataSections, edictCollection);
-        $('#treeview > details summary.fileitem').click();
+        $('#treeview > details summary.fileitem').trigger('click');
 
         if (parseWarnings.length > 0)
         {
@@ -154,7 +154,7 @@ export class AppComponent {
         treeview.append(assocTree);
 
         // Bind to inspectable element click events
-        treeview.find('.inspectable').click((event) => {
+        treeview.find('.inspectable').on('click', (event) => {
             event.stopPropagation();
             event.preventDefault();
             this.updateInspectionTarget($(event.target), true);
@@ -285,7 +285,7 @@ export class AppComponent {
                 }
                 else
                 {
-                    const edictParam = origValue.replace(/'|\\/g, '\\$&');
+                    const edictParam = origValue.replace(/['\\]/g, '\\$&');
                     result.formattedValue = '<a href="#" onclick="updateInspectionEdict(\'' + edictParam + '\', ' + isAssociative + ')">' +
                         StringEncoderService.encodeHTML(origValue) + '</a>';
                 }
