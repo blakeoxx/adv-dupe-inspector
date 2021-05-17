@@ -8,7 +8,10 @@ module.exports = {
         "plugin:@typescript-eslint/recommended-requiring-type-checking"
     ],
     "ignorePatterns": [
-        ".eslintrc.js"
+        "/.eslintrc.js",
+        "/*.config.js",
+        "/dist/",
+        "/example-dupes/"
     ],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
