@@ -120,10 +120,6 @@ h2 {
 	list-style: none;
 	cursor: pointer;
 }
-/* Chrome doesn't support list-style on summary elements yet */
-#treeview details > summary::-webkit-details-marker {
-	display: none;
-}
 #treeview details > summary::before {
 	content: '+';
 	margin-right: 0.5em;
