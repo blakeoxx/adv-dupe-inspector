@@ -171,7 +171,7 @@ module.exports = {
         "no-unsafe-finally": "error",
         "no-unused-labels": "error",
         "no-var": "error",
-        "object-shorthand": "error",
+        "object-shorthand": ["error", "never"],
         "one-var": [
             "error",
             "never"
