@@ -2,11 +2,15 @@ import { ExpressionType } from '../data-models/expression-type';
 import { Edict } from '../data-models/edict';
 import { ExpressionTypeService } from '../services/expression-type.service';
 import { EdictExpression } from '../data-models/edict-expression';
+import { map, object, serializable, serializeAll } from 'serializr';
 
+@serializeAll
 export class EdictCollectionComponent
 {
+    @serializable(map(object(Edict)))
     private entities: Record<string, Edict>;
     private headEntityID: string | undefined;
+    @serializable(map(object(Edict)))
     private constraints: Record<string, Edict>;
     private headConstraintID: string | undefined;
 

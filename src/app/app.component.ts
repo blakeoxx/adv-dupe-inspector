@@ -4,7 +4,7 @@ import { EdictCollectionComponent } from './components/edict-collection.componen
 import { DataSectionCollection } from './data-models/data-section-collection';
 import { ExpressionTypeService } from './services/expression-type.service';
 import EdictTreeWorker from 'worker-loader!../edict-tree.worker';
-import { EdictTreeWorkerSignaler } from '../edict-tree.worker';
+import { EdictTreeWorkerRequest, EdictTreeWorkerSignaler } from '../edict-tree.worker';
 
 export class AppComponent {
     private fileStatusMsg = {accepted: 'Ready to inspect', rejected: 'Parsing error', warning: 'Optimizations possible', loading: ''};
@@ -170,14 +170,17 @@ export class AppComponent {
     {
         const workerSignaler = new EdictTreeWorkerSignaler(this.edictTreeWorker);
         workerSignaler.getResults().subscribe(res => {
-            console.log('tree worker progress: ' + res.progressDone + '/' + (res.progressDone + res.progressLeft));
+            console.log('tree worker progress: ' +
+                res.progressDone + '/' + (res.progressDone + res.progressLeft) +
+                (res.finished ? ' (complete)' : '')
+            );
 
             if (res.finished) {
                 parentElem.append(res.result);
             }
         });
 
-        workerSignaler.sendMessage({edictCollection: edictCollection});
+        workerSignaler.sendMessage(new EdictTreeWorkerRequest(edictCollection));
     }
 
     // Set the details view data contexts for access when we try to render

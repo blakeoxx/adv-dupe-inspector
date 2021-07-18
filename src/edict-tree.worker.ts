@@ -4,6 +4,7 @@ import { EdictCollectionComponent } from './app/components/edict-collection.comp
 import { Edict } from './app/data-models/edict';
 import { ExpressionType } from './app/data-models/expression-type';
 import * as domino from 'domino';
+import { deserialize, object, serializable, serialize } from 'serializr';
 
 const FakeWindow: Window = domino.createWindow('<html></html>', 'https://www.subnetroot.com');
 const FakeDocument: Document = FakeWindow.document;
@@ -29,7 +30,7 @@ class EdictTreeWorkerProcessor {
         this.queue.push({edict: this.edictCollection.getHeadEntity(), view: this.resultTreeView});
         this.queue.push({edict: this.edictCollection.getHeadConstraint(), view: this.resultTreeView});
         this.sendProgressMessage();
-        const progressUpdater = setInterval(() => { this.sendProgressMessage(); }, 500);
+        const progressUpdater = setInterval(() => { this.sendProgressMessage(); }, 250);
         while (this.queue.length > 0) {
             type queueItemType = typeof EdictTreeWorkerProcessor.prototype.queue[number];
             const {edict, view} = this.queue.shift() as queueItemType;
@@ -52,7 +53,7 @@ class EdictTreeWorkerProcessor {
     sendCompletionMessage() {
         this.parentWorker.postMessage({
             finished: true,
-            progressDone: 0,
+            progressDone: this.completionCount,
             progressLeft: 0,
             result: this.resultTreeView.html()
         } as EdictTreeWorkerResponse);
@@ -111,8 +112,8 @@ class EdictTreeWorkerProcessor {
 const workerContext: Worker = self as any;
 
 workerContext.addEventListener('message', (event: MessageEvent<EdictTreeWorkerRequest>) => {
-    event.data.edictCollection = Object.assign(new EdictCollectionComponent(), event.data.edictCollection);
-    const worker = new EdictTreeWorkerProcessor(event.data.edictCollection, workerContext);
+    const hydratedRequest = deserialize(EdictTreeWorkerRequest, event.data);
+    const worker = new EdictTreeWorkerProcessor(hydratedRequest.edictCollection, workerContext);
     worker.process();
 });
 
@@ -124,6 +125,7 @@ export class EdictTreeWorkerSignaler {
 
     constructor(targetWorker: EdictTreeWorker) {
         this.targetWorker = targetWorker;
+        // Setup a listener for result messages from the worker
         targetWorker.onmessage = (ev: MessageEvent<EdictTreeWorkerResponse>) => {
             this.resultPump.next(ev.data);
             if (ev.data.finished) {
@@ -133,7 +135,7 @@ export class EdictTreeWorkerSignaler {
     }
 
     sendMessage(v: EdictTreeWorkerRequest) {
-        this.targetWorker.postMessage(v);
+        this.targetWorker.postMessage(serialize(v));
     }
 
     getResults(): Observable<EdictTreeWorkerResponse> {
@@ -141,8 +143,13 @@ export class EdictTreeWorkerSignaler {
     }
 }
 
-export interface EdictTreeWorkerRequest {
+export class EdictTreeWorkerRequest {
+    @serializable(object(EdictCollectionComponent))
     edictCollection: EdictCollectionComponent;
+
+    constructor(edictCollection: EdictCollectionComponent) {
+        this.edictCollection = edictCollection;
+    }
 }
 
 export interface EdictTreeWorkerResponse {

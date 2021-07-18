@@ -1,6 +1,8 @@
 import { ExpressionTypeService } from '../services/expression-type.service';
 import { ExpressionType } from './expression-type';
+import { serializeAll } from 'serializr';
 
+@serializeAll
 export class EdictExpression
 {
     typeLeft: ExpressionType;
