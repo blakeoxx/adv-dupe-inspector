@@ -1,14 +1,18 @@
 import { ExpressionType } from './data-models/expression-type'
 import { StringEncoderService } from './services/string-encoder.service';
 import { EdictCollectionComponent } from './components/edict-collection.component';
-import { Edict } from './data-models/edict';
 import { DataSectionCollection } from './data-models/data-section-collection';
 import { ExpressionTypeService } from './services/expression-type.service';
+import EdictTreeWorker from 'worker-loader!../edict-tree.worker';
+import { EdictTreeWorkerSignaler } from '../edict-tree.worker';
 
 export class AppComponent {
     private fileStatusMsg = {accepted: 'Ready to inspect', rejected: 'Parsing error', warning: 'Optimizations possible', loading: ''};
+    private readonly edictTreeWorker: EdictTreeWorker;
 
     constructor() {
+        this.edictTreeWorker = new EdictTreeWorker();
+
         // Run our setup routines when the document finishes loading
         $(() => { this.onDocumentLoaded(); })
     }
@@ -145,8 +149,7 @@ export class AppComponent {
 
         // Build the associative tree
         const assocTree = $('<details class="topnode assocview"><summary>Associative View</summary></details>');
-        assocTree.append(this.buildEdictTree(edictCollection, edictCollection.getHeadEntity()));
-        assocTree.append(this.buildEdictTree(edictCollection, edictCollection.getHeadConstraint()));
+        this.buildEdictTree(edictCollection, assocTree);
 
         // Add the trees and lists to the view
         treeview.append(entList);
@@ -161,44 +164,20 @@ export class AppComponent {
         });
     }
 
-    // Recursively builds an associative tree view from the given edict
-    buildEdictTree(edictCollection: EdictCollectionComponent, currentEdict: Edict | undefined)
+    // Recursively builds an associative tree view from the given edict. The tree view is added to the given
+    //  parent element. Returns an observable containing observables of child tree views.
+    buildEdictTree(edictCollection: EdictCollectionComponent, parentElem: JQuery)
     {
-        if (currentEdict === undefined) return $('<div>(undefined edict)</div>');
+        const workerSignaler = new EdictTreeWorkerSignaler(this.edictTreeWorker);
+        workerSignaler.getResults().subscribe(res => {
+            console.log('tree worker progress: ' + res.progressDone + '/' + (res.progressDone + res.progressLeft));
 
-        let label = currentEdict.getID();
-        if (currentEdict === edictCollection.getHeadEntity()) label += ' (head entity)';
-        else if (currentEdict === edictCollection.getHeadConstraint()) label += ' (head constraint)';
-
-        const children: JQuery[] = [];
-        currentEdict.getExpressions().forEach((expr) => {
-            if (expr.getLeftType() === ExpressionType.TABLE)
-            {
-                children.push(this.buildEdictTree(edictCollection, edictCollection.getEdict(expr.getLeftValue())));
-            }
-            if (expr.getRightType() === ExpressionType.TABLE)
-            {
-                children.push(this.buildEdictTree(edictCollection, edictCollection.getEdict(expr.getRightValue())));
+            if (res.finished) {
+                parentElem.append(res.result);
             }
         });
 
-        let displayItem: JQuery;
-        if (children.length === 0)
-        {
-            displayItem = $('<div class="inspectable associative"></div>')
-                .text(label)
-                .attr('data-edictid', currentEdict.getID());
-        }
-        else
-        {
-            displayItem = $('<details></details>');
-            displayItem.append($('<summary class="inspectable associative"></summary>')
-                .text(label)
-                .attr('data-edictid', currentEdict.getID()));
-            children.forEach((child) => displayItem.append(child));
-        }
-
-        return displayItem;
+        workerSignaler.sendMessage({edictCollection: edictCollection});
     }
 
     // Set the details view data contexts for access when we try to render

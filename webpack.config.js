@@ -31,6 +31,10 @@ const config = {
                     MiniCssExtractPlugin.loader,
                     'css-loader'
                 ]
+            },
+            {
+                test: /\.worker\.js$/,
+                use: { loader: 'worker-loader' }
             }
         ]
     },
