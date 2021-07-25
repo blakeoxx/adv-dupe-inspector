@@ -4,7 +4,10 @@ import { EdictCollectionComponent } from './components/edict-collection.componen
 import { DataSectionCollection } from './data-models/data-section-collection';
 import { ExpressionTypeService } from './services/expression-type.service';
 import EdictTreeWorker from 'worker-loader!../edict-tree.worker';
-import { EdictTreeWorkerRequest, EdictTreeWorkerSignaler } from '../edict-tree.worker';
+import { EdictTreeWorkerRequest, EdictTreeWorkerResponse, EdictTreeWorkerSignaler } from '../edict-tree.worker';
+import ClickEvent = JQuery.ClickEvent;
+import { Observable } from 'rxjs';
+import { filter, map } from 'rxjs/operators';
 
 export class AppComponent {
     private fileStatusMsg = {accepted: 'Ready to inspect', rejected: 'Parsing error', warning: 'Optimizations possible', loading: ''};
@@ -147,40 +150,51 @@ export class AppComponent {
             constList.append(thisItem);
         });
 
+        const inspectableOnClick = (event: ClickEvent) => {
+            event.stopPropagation();
+            event.preventDefault();
+            this.updateInspectionTarget($(event.target), true);
+        };
+
+        // Bind to inspectable element click events in the view and lists
+        treeview.find('.inspectable').on('click', inspectableOnClick);
+        entList.add(constList).find('.inspectable').on('click', inspectableOnClick);
+
         // Build the associative tree
         const assocTree = $('<details class="topnode assocview"><summary>Associative View</summary></details>');
-        this.buildEdictTree(edictCollection, assocTree);
+        this.buildEdictTree(edictCollection)
+            .subscribe(res => {
+                // Add the built tree to the associative view container and bind to inspectable element click events
+                assocTree.append(res);
+                res.find('.inspectable').on('click', inspectableOnClick);
+            });
 
         // Add the trees and lists to the view
         treeview.append(entList);
         treeview.append(constList);
         treeview.append(assocTree);
-
-        // Bind to inspectable element click events
-        treeview.find('.inspectable').on('click', (event) => {
-            event.stopPropagation();
-            event.preventDefault();
-            this.updateInspectionTarget($(event.target), true);
-        });
     }
 
     // Recursively builds an associative tree view from the given edict. The tree view is added to the given
     //  parent element. Returns an observable containing observables of child tree views.
-    buildEdictTree(edictCollection: EdictCollectionComponent, parentElem: JQuery)
+    buildEdictTree(edictCollection: EdictCollectionComponent): Observable<JQuery>
     {
         const workerSignaler = new EdictTreeWorkerSignaler(this.edictTreeWorker);
-        workerSignaler.getResults().subscribe(res => {
-            console.log('tree worker progress: ' +
-                res.progressDone + '/' + (res.progressDone + res.progressLeft) +
-                (res.finished ? ' (complete)' : '')
-            );
-
-            if (res.finished) {
-                parentElem.append(res.result);
-            }
-        });
+        const returnable = workerSignaler.getResults().pipe(
+            map(res => {
+                console.log('tree worker progress: ' +
+                    res.progressDone + '/' + (res.progressDone + res.progressLeft) +
+                    (res.finished ? ' (complete)' : '')
+                );
+                return res;
+            }),
+            filter(res => res.finished),
+            map(res => $(res.result))
+        );
 
         workerSignaler.sendMessage(new EdictTreeWorkerRequest(edictCollection));
+
+        return returnable;
     }
 
     // Set the details view data contexts for access when we try to render
