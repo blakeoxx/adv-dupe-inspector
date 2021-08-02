@@ -4,7 +4,7 @@ import { EdictCollectionComponent } from './components/edict-collection.componen
 import { DataSectionCollection } from './data-models/data-section-collection';
 import { ExpressionTypeService } from './services/expression-type.service';
 import EdictTreeWorker from 'worker-loader!../edict-tree.worker';
-import { EdictTreeWorkerRequest, EdictTreeWorkerResponse, EdictTreeWorkerSignaler } from '../edict-tree.worker';
+import { EdictTreeWorkerRequest, EdictTreeWorkerSignaler } from '../edict-tree.worker';
 import ClickEvent = JQuery.ClickEvent;
 import { Observable } from 'rxjs';
 import { filter, map } from 'rxjs/operators';
