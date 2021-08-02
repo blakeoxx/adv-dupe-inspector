@@ -138,7 +138,7 @@ class EdictTreeWorkerProcessor {
 const workerContext: Worker = self as any;
 if (typeof WorkerGlobalScope !== 'undefined' && workerContext instanceof WorkerGlobalScope) {
     // Create a window and JQuery instance since we don't have those in the worker
-    const FakeWindow = require('domino').createWindow('<html></html>', 'https://www.subnetroot.com') as Window;
+    const FakeWindow = require('domino-ext').createWindow('<html></html>', 'https://www.subnetroot.com') as Window;
     // @ts-ignore
     workerContext.$ = require('jquery')(FakeWindow) as JQueryStatic;
 
