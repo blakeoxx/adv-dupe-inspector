@@ -252,55 +252,53 @@ export class AppComponent {
         if (thisEdict === undefined){ header.text(header.text()+' (Undefined Edict)'); return; }
         else header.text(header.text()+' ('+(thisEdict.isEntity()?'Entity':'Constraint')+')');
 
-        // Shortcut function for formatting the expression values in the loop. Returns an object{classes[], formattedValue}
-        const formatExprVal = (exprType: ExpressionType, origValue: string) => {
-            const result = {classes:[] as string[], formattedValue:''};
-
+        // Shortcut function for formatting the expression values in the loop
+        const addFormattedExpr = (exprType: ExpressionType, origValue: string, targetElem: JQuery) => {
             const isValid = ExpressionTypeService.validatorFor(exprType).test(origValue);
 
             if (!isValid)
             {
-                result.classes.push('expr-value-invalid');
-                result.formattedValue = StringEncoderService.encodeHTML(origValue);
+                targetElem.addClass('expr-value-invalid');
+                targetElem.text(origValue);
             }
             else if (exprType === ExpressionType.DICTIONARY || exprType === ExpressionType.DICTIONARY_ESCAPED)
             {
                 if (dictionary[origValue] === undefined)
                 {
-                    result.classes.push('expr-value-notfound');
-                    result.formattedValue = StringEncoderService.encodeHTML(origValue);
+                    targetElem.addClass('expr-value-notfound');
+                    targetElem.text(origValue);
                 }
-                else result.formattedValue = StringEncoderService.encodeHTML(dictionary[origValue]);
+                else targetElem.text(dictionary[origValue]);
             }
             else if (exprType === ExpressionType.TABLE)
             {
                 if (edictCollection.getEdict(origValue) === undefined)
                 {
-                    result.classes.push('expr-value-notfound');
-                    result.formattedValue = StringEncoderService.encodeHTML(origValue);
+                    targetElem.addClass('expr-value-notfound');
+                    targetElem.text(origValue);
                 }
                 else
                 {
                     const edictParam = origValue.replace(/['\\]/g, '\\$&');
-                    result.formattedValue = '<a href="#" onclick="updateInspectionEdict(\'' + edictParam + '\', ' + isAssociative + ')">' +
-                        StringEncoderService.encodeHTML(origValue) + '</a>';
+                    const edictLink = $('<a href="#"></a>')
+                        .text(origValue)
+                        .on('click', () => { this.updateInspectionEdict(edictParam, isAssociative); });
+                    targetElem.append(edictLink);
                 }
             }
             else if (exprType === ExpressionType.ANGLE || exprType === ExpressionType.VECTOR)
             {
                 const parts = origValue.match(ExpressionTypeService.validatorFor(exprType)) ?? [];
-                result.formattedValue = '(' + parts[1] + ', ' + parts[2] + ', ' + parts[3] + ')';
+                targetElem.text('(' + parts[1] + ', ' + parts[2] + ', ' + parts[3] + ')');
             }
             else if (exprType === ExpressionType.BOOLEAN)
             {
-                result.formattedValue = (origValue==='t'?'TRUE':'FALSE');
+                targetElem.text((origValue === 't' ? 'TRUE' : 'FALSE'));
             }
             else	// Everything else including string, player, and number values
             {
-                result.formattedValue = StringEncoderService.encodeHTML(origValue);
+                targetElem.text(origValue);
             }
-
-            return result;
         };
 
         const infosection: JQuery = $('<div><b>Expressions:</b><table class="expr-list"></table></div>');
@@ -309,18 +307,12 @@ export class AppComponent {
             '<td>=</td><td><span class="rval"></span></td></tr>');
         thisEdict.getExpressions().forEach((expr) => {
             const thisElem = exprelem.clone();
-            const leftFormatted = formatExprVal(expr.getLeftType(), expr.getLeftValue());
-            const rightFormatted = formatExprVal(expr.getRightType(), expr.getRightValue());
-
-            thisElem.find('.lval')
-                .addClass(ExpressionTypeService.enumToCSSClass(expr.getLeftType()))
-                .addClass(leftFormatted.classes.join(' '))
-                .html(leftFormatted.formattedValue);
-
-            thisElem.find('.rval')
-                .addClass(ExpressionTypeService.enumToCSSClass(expr.getRightType()))
-                .addClass(rightFormatted.classes.join(' '))
-                .html(rightFormatted.formattedValue);
+            const leftContainer = thisElem.find('.lval')
+                .addClass(ExpressionTypeService.enumToCSSClass(expr.getLeftType()));
+            const rightContainer = thisElem.find('.rval')
+                .addClass(ExpressionTypeService.enumToCSSClass(expr.getRightType()));
+            addFormattedExpr(expr.getLeftType(), expr.getLeftValue(), leftContainer);
+            addFormattedExpr(expr.getRightType(), expr.getRightValue(), rightContainer);
 
             infolist.append(thisElem);
         });
