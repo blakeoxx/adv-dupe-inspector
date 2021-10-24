@@ -1,5 +1,4 @@
 import { ExpressionType } from './data-models/expression-type'
-import { StringEncoderService } from './services/string-encoder.service';
 import { EdictCollectionComponent } from './components/edict-collection.component';
 import { DataSectionCollection } from './data-models/data-section-collection';
 import { ExpressionTypeService } from './services/expression-type.service';
@@ -33,27 +32,27 @@ export class AppComponent {
         if (fileList.length === 0) return;
 
         const file: File = fileList[0];
-        if (file.type !== 'text/plain'){ this.updateFileStatus('rejected', file.name+' is not a plaintext file (*.txt)'); return; }
+        if (file.type !== 'text/plain'){ this.updateFileStatus('rejected', [file.name+' is not a plaintext file (*.txt)']); return; }
 
         const reader = new FileReader();
 
         reader.onload = (res) => {
             if (!(res.target instanceof FileReader) || typeof res.target.result !== 'string')
             {
-                this.updateFileStatus('rejected', 'The file could not be loaded as a file reader. Please check the file and try again.');
+                this.updateFileStatus('rejected', ['The file could not be loaded as a file reader. Please check the file and try again.']);
             }
             else this.parseData(file.name, res.target.result);
         };
         reader.onerror = (res) => {
             if (!(res.target instanceof FileReader) || !(res.target.error instanceof DOMException))
             {
-                this.updateFileStatus('rejected', 'The file reader returned an unknown error. Please check the file and try again.');
+                this.updateFileStatus('rejected', ['The file reader returned an unknown error. Please check the file and try again.']);
             }
-            else this.updateFileStatus('rejected', 'The file reader returned error code ' + res.target.error.code + '. '
-                + 'Please check the file and try again.');
+            else this.updateFileStatus('rejected', ['The file reader returned error code ' + res.target.error.code + '. '
+                + 'Please check the file and try again.']);
         };
 
-        this.updateFileStatus('loading', '');
+        this.updateFileStatus('loading');
         reader.readAsText(file);
     }
 
@@ -86,7 +85,7 @@ export class AppComponent {
         {
             if (dataSections.isSectionSet(expectedSection) === undefined)
             {
-                this.updateFileStatus('rejected', 'Section "'+expectedSection+'" missing');
+                this.updateFileStatus('rejected', ['Section "'+expectedSection+'" missing']);
                 return;
             }
         }
@@ -95,12 +94,12 @@ export class AppComponent {
 
         if (dataSections.Save.Entities === undefined)
         {
-            this.updateFileStatus('rejected', 'Section "Save" missing entities');
+            this.updateFileStatus('rejected', ['Section "Save" missing entities']);
             return;
         }
         if (dataSections.Save.Constraints === undefined)
         {
-            this.updateFileStatus('rejected', 'Section "Save" missing constraints');
+            this.updateFileStatus('rejected', ['Section "Save" missing constraints']);
             return;
         }
 
@@ -123,9 +122,9 @@ export class AppComponent {
 
         if (parseWarnings.length > 0)
         {
-            this.updateFileStatus('warning', parseWarnings.map(x => StringEncoderService.encodeHTML(x)).join('<br>'));
+            this.updateFileStatus('warning', parseWarnings);
         }
-        else this.updateFileStatus('accepted', '');
+        else this.updateFileStatus('accepted');
     }
 
     renderTreeView(filename: string, edictCollection: EdictCollectionComponent)
@@ -378,12 +377,18 @@ export class AppComponent {
         }
     }
 
-    updateFileStatus(status: 'accepted'|'rejected'|'warning'|'loading', details: string)
+    updateFileStatus(status: 'accepted'|'rejected'|'warning'|'loading', details: string[] = [])
     {
         $('#filestatus').removeClass().addClass(status);
         $('#filestatus .label').text(this.fileStatusMsg[status]);
-        // TODO: Show details in UI
-        console.log('file status updated to '+status+':', details);
+
+        // Show details in UI
+        const detailsElem = $('#filedetails');
+        detailsElem.html('');
+        details.forEach(v => {
+            detailsElem.append($('<p class="detail-message"></p>').text(v));
+        });
+        if (details.length === 0) detailsElem.append('<p>(No details available)</p>');
     }
 
     handleFileSelect(event: JQuery.ChangeEvent)
