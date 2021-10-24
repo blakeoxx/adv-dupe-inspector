@@ -18,14 +18,15 @@
 	</p>
 	<div id="fileupload">
 		<i class="fas fa-file-upload"></i> Choose a dupe file
-		<div id="filestatus" class="hidden">
+		<div id="filestatus" class="hidden" title="Click for more details">
 			<i class="fas fa-cog fa-spin status-icon loading-icon"></i>
 			<i class="fas fa-check-circle status-icon accepted-icon"></i>
 			<i class="fas fa-times-circle status-icon rejected-icon"></i>
 			<i class="fas fa-exclamation-circle status-icon warning-icon"></i>
 			<span class="label"></span>
 		</div>
-		<input type="file">
+		<div class="file-select-container"><input type="file"></div>
+		<div id="filedetails" class="hidden"></div>
 	</div>
 </div>
 
