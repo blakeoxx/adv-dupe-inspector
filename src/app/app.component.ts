@@ -24,6 +24,7 @@ export class AppComponent {
         $('#fileupload input[type="file"]').on('change', (event) => { this.handleFileSelect(event); });
         $('body').on('drop', (event) => { this.handleFileDrop(event); })
             .on('dragover', (event) => { this.handleFileDragOver(event); });
+        $('#filestatus').on('click', () => { this.toggleFileDetails(); });
     }
 
     loadFile(fileList: FileList)
@@ -403,5 +404,14 @@ export class AppComponent {
         event.stopPropagation();
         event.preventDefault();
         if (event.originalEvent?.dataTransfer?.dropEffect) event.originalEvent.dataTransfer.dropEffect = 'copy';
+    }
+
+    toggleFileDetails(show?: boolean)
+    {
+        const elem = $('#filedetails');
+        if (show === undefined) show = elem.hasClass('hidden');
+
+        if (show) elem.removeClass('hidden');
+        else elem.addClass('hidden');
     }
 }
