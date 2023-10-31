@@ -24,7 +24,7 @@
     "eslint-plugin-jsdoc": "^46.8.2",
     "eslint-plugin-prefer-arrow": "^1.2.3",
     "html-webpack-plugin": "^5.5.3",
-    "jquery": "3.6.0",
+    "jquery": "3.7.1",
     "lodash": "^4.17.21",
     "mini-css-extract-plugin": "^2.7.6",
     "rxjs": "^7.8.1",
