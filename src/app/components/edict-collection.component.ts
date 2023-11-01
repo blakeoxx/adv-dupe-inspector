@@ -9,9 +9,9 @@ export class EdictCollectionComponent
 {
     @serializable(map(object(Edict)))
     private entities: Record<string, Edict>;
-    private headEntityID: string | undefined;
     @serializable(map(object(Edict)))
     private constraints: Record<string, Edict>;
+    private headEntityID: string | undefined;
     private headConstraintID: string | undefined;
 
     constructor()

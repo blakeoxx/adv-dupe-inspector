@@ -4,10 +4,10 @@ import { list, object, serializable, serializeAll } from 'serializr';
 @serializeAll
 export class Edict
 {
-    private edictID: string;
-    private isEntityFlag: boolean;
     @serializable(list(object(EdictExpression)))
     private expressions: EdictExpression[] = [];
+    private edictID: string;
+    private isEntityFlag: boolean;
 
     constructor(edictID: string, isEntityFlag: boolean)
     {

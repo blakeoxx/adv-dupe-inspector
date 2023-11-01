@@ -48,7 +48,7 @@ export class AppComponent {
             {
                 this.updateFileStatus('rejected', ['The file reader returned an unknown error. Please check the file and try again.']);
             }
-            else this.updateFileStatus('rejected', ['The file reader returned error code ' + res.target.error.code + '. '
+            else this.updateFileStatus('rejected', ['The file reader returned error code ' + res.target.error.name + '. '
                 + 'Please check the file and try again.']);
         };
 
@@ -209,28 +209,31 @@ export class AppComponent {
     showFileDetails()
     {
         const detailsview = $('#inspector');
+        const detailsFilename: string = detailsview.data('filename') as string;
+        const detailsDataSections: DataSectionCollection = detailsview.data('datasections') as DataSectionCollection;
+
         detailsview.empty();
-        detailsview.append($('<h2></h2>').text(detailsview.data('filename')));
+        detailsview.append($('<h2></h2>').text(detailsFilename));
 
         let infosection: JQuery;
         let infolist: JQuery;
         infosection = $('<div><b>Info:</b><ul></ul></div>');
         infolist = infosection.find('ul');
-        Object.entries(detailsview.data('datasections').Info).forEach(([key, val]) => {
+        Object.entries(detailsDataSections.Info).forEach(([key, val]) => {
             infolist.append($('<li></li>').text(key+': '+val));
         });
         detailsview.append(infosection);
 
         infosection = $('<div><b>More Information:</b><ul></ul></div>');
         infolist = infosection.find('ul');
-        Object.entries(detailsview.data('datasections')['More Information']).forEach(([key, val]) => {
+        Object.entries(detailsDataSections['More Information']).forEach(([key, val]) => {
             infolist.append($('<li></li>').text(key+': '+val));
         });
         detailsview.append(infosection);
 
         infosection = $('<div><b>Dictionary:</b><ul></ul></div>');
         infolist = infosection.find('ul');
-        Object.entries(detailsview.data('datasections').Dict).forEach(([key, val]) => {
+        Object.entries(detailsDataSections.Dict).forEach(([key, val]) => {
             infolist.append($('<li></li>').text(key+': '+val));
         });
         detailsview.append(infosection);
@@ -326,7 +329,7 @@ export class AppComponent {
         $('#treeview > details .inspecting').removeClass('inspecting');
         target.addClass('inspecting');
         if (target.hasClass('fileitem')) this.showFileDetails();
-        else this.showEdictDetails(target.data('edictid'), target.hasClass('associative'));
+        else this.showEdictDetails((target.data('edictid') as string), target.hasClass('associative'));
 
         // Open any parent trees to the target
         target.parentsUntil('#treeview', 'details').prop('open', true);
@@ -393,8 +396,11 @@ export class AppComponent {
 
     handleFileSelect(event: JQuery.ChangeEvent)
     {
-        // @ts-ignore: The files property DOES exist on this event
-        this.loadFile(event.originalEvent?.target?.files ?? new FileList());
+        // The change event for file input elements includes a `files` property not part of the EventTarget interface.
+        //  So we create a new intersection type to make TypeScript happy
+        type FileSelectedEventTarget = EventTarget & {files?: FileList};
+        const target: FileSelectedEventTarget = event.originalEvent?.target as FileSelectedEventTarget;
+        this.loadFile(target?.files ?? new FileList());
     }
 
     handleFileDrop(event: JQuery.DropEvent)
